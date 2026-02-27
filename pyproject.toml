@@ -1,0 +1,59 @@
+[project]
+name = "scraper-BE"
+version = "0.0.1"
+description = "A scraper that extracts data about the Abgeordnetenhaus von Berlin and supplies it to the PaZuFa."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "Sebastian Jäger", email = "git@sebastian-jaeger.me" }]
+dependencies = [
+  "ltzf-api-client",
+  "scrapy>=2.14.1",
+]
+
+[dependency-groups]
+dev = [
+  "openapi-python-client>=0.28.2",
+  "ruff>=0.15.2",
+  "ty>=0.0.18",
+]
+
+[tool.ruff]
+line-length = 160
+target-version = "py312"
+fix = true
+extend-include = ["*.ipynb"]
+
+[tool.ruff.lint]
+select = [
+  "ALL",  # Include all the rules, including new ones
+]
+ignore = [
+  "FIX",  # Temporary developer notes should not break actions
+  "COM812",  # For compatibility with ruff-format
+  "ISC001",  # For compatibility with ruff-format
+  "S311",  # We do not require cryptographically-sound randomness
+  "D100",  # Do not document public modules
+  "D104",  # Do not document public packages
+  "TD003",  # Allow TODOs without links
+  "ISC003",  # Do not implicietly concatenate strings
+  "S101",  # Allow testing methods
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = [
+  "F401",  # Unused imports in __init__ files can make sense
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.uv.workspace]
+members = [
+  "pazufa_api_client",
+]
+
+[tool.uv.sources]
+ltzf-api-client = { workspace = true, editable = true }
