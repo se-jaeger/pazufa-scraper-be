@@ -7,8 +7,11 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
+import uuid
+
 # Custom Settings
 LOG_LEVEL = "INFO"
+SCRAPER_UUID = uuid.UUID("05dc56fc-24e1-442b-9f97-91d596d50471")
 
 # Scray Settings
 BOT_NAME = "PaZuFa_Berlin_Scraper"
@@ -17,7 +20,6 @@ SPIDER_MODULES = ["scraper_BE.spiders"]
 NEWSPIDER_MODULE = "scraper_BE.spiders"
 
 ADDONS = {}
-
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 # USER_AGENT = "scraper_BE (+http://www.yourdomain.com)"
