@@ -1,11 +1,16 @@
+from __future__ import annotations
+
 from datetime import date, datetime
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Any, Literal, Self, get_args
 
-from pydantic import BaseModel, BeforeValidator, Field, HttpUrl, RootModel, ValidationError, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, HttpUrl, PrivateAttr, model_validator
 
 
-def parse_german_date(date_as_str: str) -> date:
-    return datetime.strptime(date_as_str, "%d.%m.%Y").date()
+def parse_german_date(date_or_str: date | str) -> date:
+    if isinstance(date_or_str, date):
+        return date_or_str
+
+    return datetime.strptime(date_or_str, "%d.%m.%Y").date()
 
 
 def ensure_list(value: Any | list) -> list:
@@ -18,10 +23,11 @@ CoercedUrlList = Annotated[list[HttpUrl], BeforeValidator(ensure_list)]
 
 
 class BaseGesetzDokument(BaseModel):
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid", revalidate_instances="always", populate_by_name=True)
+    _vorgang: GesetzVorgang | None = PrivateAttr(default=None)
 
-    art: str
-    art_l: str
+    art: str = Field(alias="DokArt")
+    art_l: str = Field(alias="DokArtL")
 
     herk: str = Field(alias="DHerk")
     herk_l: str = Field(alias="DHerkL")
@@ -30,7 +36,7 @@ class BaseGesetzDokument(BaseModel):
     typ_l: str = Field(alias="DokTypL")
 
     id: str = Field(alias="DBID")
-    wp: str = Field(alias="Wp")
+    wp: int = Field(alias="Wp")
     reih_nr: int = Field(alias="ReihNr", gt=0)
     lok_url: str | None = Field(default=None, alias="LokURL")
 
@@ -38,13 +44,22 @@ class BaseGesetzDokument(BaseModel):
     abstract: str | None = Field(default=None, alias="Abstract")
     dat: GermanDate | None = Field(default=None, alias="DokDat")
 
+    @property
+    def vorgang(self) -> GesetzVorgang:
+        if self._vorgang is None:
+            raise RuntimeError("Dokument is standalone and is not attached to a Vorgang.")
+
+        return self._vorgang
+
     @model_validator(mode="after")
-    def ensure_valid_dok_typ_mapping(self) -> Self:
+    def ensure_valid_DokTyp_to_DokTypL_mapping(self) -> Self:
         mapping = {
             "ABespr § 21 Abs. 3 GO": "Ausschussbesprechung § 21 Abs. 3 GO",
+            "ABespr": "Ausschussbesprechung",
             "Antr (GesEntw)": "Antrag (Gesetzentwurf)",
             "Antr": "Antrag",
             "Ausschussberatung": "Ausschussberatung",
+            "ABericht (Zwischenbericht)": "Ausschussbericht (Zwischenbericht)",
             "Behandlung im Plenum": "Behandlung im Plenum",
             "Bekannt (GVBl)": "Bekanntmachung (Gesetz- und Verordnungsblatt)",
             "BeschlEmpf": "Beschlussempfehlung",
@@ -53,37 +68,58 @@ class BaseGesetzDokument(BaseModel):
             "II. Lesung": "II. Lesung",
             "III. Lesung": "III. Lesung",
             "Neufassung": "Neufassung",
+            "VorlBeschl": "Vorlage zur Beschlussfassung",
             "VorlBeschl (GesEntw)": "Vorlage zur Beschlussfassung (Gesetzentwurf)",
             "VorlBeschl (GesEntwErg)": "Vorlage zur Beschlussfassung (Gesetzentwurf/Ergänzung)",
             "ÄndAntr": "Änderungsantrag",
         }
         if self.typ_l != mapping[self.typ]:
             msg = "'DokTypL' is not as expected by given 'DokTyp'"
-            raise ValidationError(msg)
+            raise ValueError(msg)
 
         return self
 
     @model_validator(mode="after")
-    def ensure_valid_dok_herk_mapping(self) -> Self:
+    def ensure_valid_DokArt_to_DokArtL_mapping(self) -> Self:
+        mapping = {
+            "PlPr": "Plenarprotokoll",
+            "APr": "Ausschussprotokoll",
+            "GVBl": "Gesetz- und Verordnungsblatt",
+            "Drs": "Drucksache",
+        }
+        if self.art_l != mapping[self.art]:
+            msg = "'DokArtL' is not as expected by given 'DokArt'"
+            raise ValueError(msg)
+
+        return self
+
+    @model_validator(mode="after")
+    def ensure_valid_DHerk_to_DHerk_mapping(self) -> Self:
         mapping = {"BLN": "Berlin"}
         if self.herk_l != mapping[self.herk]:
             msg = "'DHerkL' is not as expected by given 'DHerk'"
-            raise ValidationError(msg)
+            raise ValueError(msg)
+
+        return self
+
+    @model_validator(mode="after")
+    def ensure_DHerk_is_BLN(self) -> Self:
+        if self.herk != "BLN":
+            msg = "'DHerk' is expected to be 'BLN'"
+            raise ValueError(msg)
 
         return self
 
 
 class PlPrDokument(BaseGesetzDokument):
-    art: Literal["PlPr"] = Field(default="PlPr", alias="DokArt")
-    art_l: Literal["Plenarprotokoll"] = Field(default="Plenarprotokoll", alias="DokArtL")
+    art: Literal["PlPr"] = Field(alias="DokArt")
 
     sb: str | None = Field(default=None, alias="Sb")
     redner: CoercedStrList = Field(default_factory=list, alias="Redner")
 
 
 class APrDokument(BaseGesetzDokument):
-    art: Literal["APr"] = Field(default="APr", alias="DokArt")
-    art_l: Literal["Ausschussprotokoll"] = Field(default="Ausschussprotokoll", alias="DokArtL")
+    art: Literal["APr"] = Field(alias="DokArt")
 
     urheber: CoercedStrList = Field(default_factory=list, alias="Urheber")
 
@@ -95,8 +131,7 @@ class DeskTitelSbMixin:
 
 
 class GVBlDokument(BaseGesetzDokument, DeskTitelSbMixin):
-    art: Literal["GVBl"] = Field(default="GVBl", alias="DokArt")
-    art_l: Literal["Gesetz- und Verordnungsblatt"] = Field(default="Gesetz- und Verordnungsblatt", alias="DokArtL")
+    art: Literal["GVBl"] = Field(alias="DokArt")
 
     vk_dat: GermanDate = Field(alias="VkDat")
     jg: str = Field(alias="Jg")
@@ -104,18 +139,9 @@ class GVBlDokument(BaseGesetzDokument, DeskTitelSbMixin):
 
 
 class DrsDokument(BaseGesetzDokument, DeskTitelSbMixin):
-    art: Literal["Drs"] = Field(default="Drs", alias="DokArt")
-    art_l: Literal["Drucksache"] = Field(default="Drucksache", alias="DokArtL")
+    art: Literal["Drs"] = Field(alias="DokArt")
 
     urheber: CoercedStrList = Field(default_factory=list, alias="Urheber")
-
-
-class GesetzDokument(RootModel[Annotated[PlPrDokument | GVBlDokument | APrDokument | DrsDokument, Field(discriminator="art")]]):
-    def __getattr__(self, name: str):
-        return getattr(self.root, name)
-
-    def __repr__(self):
-        return repr(self.root)
 
 
 class Nebeneintrag(BaseModel):
@@ -123,10 +149,40 @@ class Nebeneintrag(BaseModel):
     desk: str = Field(alias="Desk")
 
 
+AnyGesetzDokument = PlPrDokument | GVBlDokument | APrDokument | DrsDokument
+AnyGesetzDokumentField = Annotated[AnyGesetzDokument, Field(discriminator="art")]
+
+
+def parse_dokument(data: dict | AnyGesetzDokument) -> AnyGesetzDokument:
+    if isinstance(data, get_args(AnyGesetzDokument)):
+        return data
+
+    if not isinstance(data, dict):
+        msg = f"Expected dict, got {type(data)}"
+        raise TypeError(msg)
+
+    art = data.get("DokArt")
+    mapping: dict[str, type[AnyGesetzDokument]] = {
+        "PlPr": PlPrDokument,
+        "APr": APrDokument,
+        "GVBl": GVBlDokument,
+        "Drs": DrsDokument,
+    }
+    Dokument = mapping.get(art)
+
+    if Dokument is None:
+        msg = f"Unknown DokArt: {art}. Has to be one of: {', '.join(mapping.keys())}."
+        raise ValueError(msg)
+
+    return Dokument(**data)
+
+
 # NOTE: https://www.parlament-berlin.de/media/download/4322
 class GesetzVorgang(BaseModel):
-    typ: Literal["Gesetz"] = "Gesetz"
-    typ_l: Literal["Gesetzgebung"] = "Gesetzgebung"
+    model_config = ConfigDict(extra="forbid", revalidate_instances="always", populate_by_name=True)
+
+    typ: str = Field(alias="VTyp")
+    typ_l: str = Field(alias="VTypL")
 
     id: str = Field(alias="VID")
     reih_nr: int = Field(alias="ReihNr", ge=0, lt=1)
@@ -135,4 +191,38 @@ class GesetzVorgang(BaseModel):
     sys_l: CoercedStrList = Field(alias="VSysL", default_factory=list)
     ir: str = Field(alias="VIR")
     nebeneintraege: Annotated[list[Nebeneintrag], BeforeValidator(ensure_list)] = Field(alias="Nebeneintrag", default_factory=list)
-    dokumente: Annotated[list[GesetzDokument], BeforeValidator(ensure_list)] = Field(alias="Dokument", default_factory=list)
+    dokumente: Annotated[
+        list[AnyGesetzDokumentField],
+        # NOTE: order of validators is crucial. Last is run first.
+        BeforeValidator(lambda dokumente: [parse_dokument(dokument) for dokument in dokumente]),
+        BeforeValidator(ensure_list),
+    ] = Field(alias="Dokument", default_factory=list)
+
+    @model_validator(mode="after")
+    def ensure_VID_equals_VNr(self) -> Self:
+        if self.id != self.nr:
+            msg = "'VID' is expected to be equal to 'VNr'"
+            raise ValueError(msg)
+
+        return self
+
+    @model_validator(mode="after")
+    def ensure_VIR_is_X(self) -> Self:
+        if self.ir != "X":
+            msg = "'VIR' is expected to be 'X'"
+            raise ValueError(msg)
+
+        return self
+
+    @model_validator(mode="after")
+    def ensure_valid_VTyp_to_VTypL_mapping(self) -> Self:
+        mapping = {"Gesetz": "Gesetzgebung"}
+        if self.typ_l != mapping[self.typ]:
+            msg = "'VTypL' is not as expected by given 'VTyp'"
+            raise ValueError(msg)
+
+        return self
+
+    def model_post_init(self, _context: Any) -> None:
+        for dokument in self.dokumente:
+            dokument._vorgang = self

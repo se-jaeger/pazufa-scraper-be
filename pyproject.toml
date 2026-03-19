@@ -6,7 +6,9 @@ readme = "README.md"
 requires-python = ">=3.12"
 authors = [{ name = "Sebastian Jäger", email = "git@sebastian-jaeger.me" }]
 dependencies = [
+  "kreuzberg>=4.4.6",
   "ltzf-api-client",
+  "pydantic>=2.12.5",
   "scrapy>=2.14.1",
 ]
 
@@ -14,6 +16,7 @@ dependencies = [
 dev = [
   "datamodel-code-generator>=0.54.1",
   "jupyterlab>=4.5.5",
+  "jupyterlab-vim>=4.1.4",
   "openapi-python-client>=0.28.2",
   "ruff>=0.15.2",
   "ty>=0.0.18",

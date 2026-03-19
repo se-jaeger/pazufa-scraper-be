@@ -18,5 +18,5 @@ openapi-python-client generate --url https://codeberg.org/PaZuFa/parlamentszusam
 scrapy runspider scraper_BE/spiders/gesetz_vorgang.py
 
 # run a spider for specific 'wahlperiode'
-scrapy runspider -a wahlperiode=18 scraper_BE/spiders/gesetz_vorgang.py
+scrapy runspider -s WAHLPERIODE=18 scraper_BE/spiders/gesetz_vorgang.py
 ```
