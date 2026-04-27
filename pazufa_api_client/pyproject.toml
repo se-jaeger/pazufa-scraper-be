@@ -1,7 +1,7 @@
 [project]
-name = "ltzf-api-client"
-version = "0.2.3"
-description = "A client library for accessing LTZF API"
+name = "pazufa_api_client"
+version = "0.2.4"
+description = "A client library for accessing PaZuFa API"
 authors = []
 requires-python = ">=3.10"
 readme = "README.md"
@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [tool.uv.build-backend]
-module-name = "ltzf_api_client"
+module-name = "pazufa_api_client"
 module-root = ""
 
 [build-system]

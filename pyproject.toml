@@ -1,5 +1,5 @@
 [project]
-name = "scraper-BE"
+name = "pazufa-scraper-be"
 version = "0.0.1"
 description = "A scraper that extracts data about the Abgeordnetenhaus von Berlin and supplies it to the PaZuFa."
 readme = "README.md"
@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 authors = [{ name = "Sebastian Jäger", email = "git@sebastian-jaeger.me" }]
 dependencies = [
   "kreuzberg>=4.4.6",
-  "ltzf-api-client",
+  "pazufa_api_client",
   "pydantic>=2.12.5",
   "python-magic>=0.4.27",
   "scrapy>=2.14.1",
@@ -61,4 +61,4 @@ members = [
 ]
 
 [tool.uv.sources]
-ltzf-api-client = { workspace = true, editable = true }
+pazufa_api_client = { workspace = true, editable = true }
