@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import logging
+from collections.abc import Callable
 from datetime import date, datetime
 from typing import Annotated, Any, Literal, Self, get_args
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, HttpUrl, PrivateAttr, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, HttpUrl, PrivateAttr, ValidationError, model_validator
+
+logger = logging.getLogger(__name__)
 
 
 def parse_german_date(date_or_str: date | str) -> date:
@@ -17,9 +21,24 @@ def ensure_list(value: Any | list) -> list:
     return value if isinstance(value, list) else [value]
 
 
+def ignore_invalid_factory(cls: type[BaseModel]) -> Callable[tuple[type[BaseModel]], list]:
+    def return_function(items: list[Any]) -> list[type[BaseModel]]:
+        result = []
+        for item in items:
+            try:
+                result.append(cls.model_validate(item))
+
+            except ValidationError:
+                msg = f"Ignoring invalid {cls.__name__}: {item}"
+                logger.warning(msg)
+
+        return result
+
+    return return_function
+
+
 GermanDate = Annotated[date, BeforeValidator(parse_german_date)]
 CoercedStrList = Annotated[list[str], BeforeValidator(ensure_list)]
-CoercedUrlList = Annotated[list[HttpUrl], BeforeValidator(ensure_list)]
 
 
 class BaseGesetzDokument(BaseModel):
@@ -33,23 +52,29 @@ class BaseGesetzDokument(BaseModel):
     herk_l: str = Field(alias="DHerkL")
 
     typ: str = Field(alias="DokTyp")
-    typ_l: str = Field(alias="DokTypL")
+    typ_l: Annotated[str, BeforeValidator(lambda x: "" if type(x) is dict else x)] = Field(alias="DokTypL")
 
     id: str = Field(alias="DBID")
     wp: int = Field(alias="Wp")
     reih_nr: int = Field(alias="ReihNr", gt=0)
-    lok_url: str | None = Field(default=None, alias="LokURL")
-
-    nr: str | None = Field(default=None, alias="DokNr")
+    nr: str = Field(alias="DokNr")
+    dat: GermanDate = Field(alias="DokDat")
     abstract: str | None = Field(default=None, alias="Abstract")
-    dat: GermanDate | None = Field(default=None, alias="DokDat")
+
+    lok_url: HttpUrl = Field(alias="LokURL")
+    additional_urls: Annotated[list[HttpUrl] | None, BeforeValidator(lambda v: None if v == [] else [v] if isinstance(v, str) else v)] = Field(default=None)
 
     @property
     def vorgang(self) -> GesetzVorgang:
         if self._vorgang is None:
-            raise RuntimeError("Dokument is standalone and is not attached to a Vorgang.")
+            msg = "Dokument is standalone and is not attached to a Vorgang."
+            raise RuntimeError(msg)
 
         return self._vorgang
+
+    @property
+    def all_urls(self) -> list[HttpUrl]:
+        return ([self.lok_url] if self.lok_url else []) + (self.additional_urls or [])
 
     @model_validator(mode="after")
     def ensure_valid_DokTyp_to_DokTypL_mapping(self) -> Self:
@@ -73,9 +98,9 @@ class BaseGesetzDokument(BaseModel):
             "VorlBeschl (GesEntwErg)": "Vorlage zur Beschlussfassung (Gesetzentwurf/Ergänzung)",
             "ÄndAntr": "Änderungsantrag",
         }
-        if self.typ_l != mapping[self.typ]:
-            msg = "'DokTypL' is not as expected by given 'DokTyp'"
-            raise ValueError(msg)
+        if self.typ_l != mapping.get(self.typ):
+            msg = f"DokTypL is not as expected by given DokTyp: '{self.typ_l}'"
+            logger.warning(msg)
 
         return self
 
@@ -111,14 +136,19 @@ class BaseGesetzDokument(BaseModel):
         return self
 
 
-class PlPrDokument(BaseGesetzDokument):
+class Protokoll(BaseGesetzDokument):
+    lok_url: HttpUrl | None = Field(default=None, alias="LokURL")
+    dat: GermanDate | None = Field(default=None, alias="DokDat")
+
+
+class PlPrDokument(Protokoll):
     art: Literal["PlPr"] = Field(alias="DokArt")
 
     sb: str | None = Field(default=None, alias="Sb")
     redner: CoercedStrList = Field(default_factory=list, alias="Redner")
 
 
-class APrDokument(BaseGesetzDokument):
+class APrDokument(Protokoll):
     art: Literal["APr"] = Field(alias="DokArt")
 
     urheber: CoercedStrList = Field(default_factory=list, alias="Urheber")
@@ -135,7 +165,8 @@ class GVBlDokument(BaseGesetzDokument, DeskTitelSbMixin):
 
     vk_dat: GermanDate = Field(alias="VkDat")
     jg: str = Field(alias="Jg")
-    h_nr: str | None = Field(default=None, alias="HNr")
+    h_nr: str = Field(default=None, alias="HNr")
+    nr: str | None = Field(default=None, alias="DokNr")
 
 
 class DrsDokument(BaseGesetzDokument, DeskTitelSbMixin):
@@ -190,10 +221,15 @@ class GesetzVorgang(BaseModel):
     sys: CoercedStrList = Field(alias="VSys", default_factory=list)
     sys_l: CoercedStrList = Field(alias="VSysL", default_factory=list)
     ir: str = Field(alias="VIR")
-    nebeneintraege: Annotated[list[Nebeneintrag], BeforeValidator(ensure_list)] = Field(alias="Nebeneintrag", default_factory=list)
+    nebeneintraege: Annotated[
+        list[Nebeneintrag],
+        # NOTE: Order of validators is crucial - last runs first.
+        BeforeValidator(ignore_invalid_factory(Nebeneintrag)),
+        BeforeValidator(ensure_list),
+    ] = Field(alias="Nebeneintrag", default_factory=list)
     dokumente: Annotated[
         list[AnyGesetzDokumentField],
-        # NOTE: order of validators is crucial. Last is run first.
+        # NOTE: Order of validators is crucial - last runs first.
         BeforeValidator(lambda dokumente: [parse_dokument(dokument) for dokument in dokumente]),
         BeforeValidator(ensure_list),
     ] = Field(alias="Dokument", default_factory=list)

@@ -223,5 +223,6 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python,macos,linux
 
-asdf
-cache
+notebooks
+.cache
+.errors

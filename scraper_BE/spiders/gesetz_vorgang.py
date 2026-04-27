@@ -26,10 +26,8 @@ class GesetzVorgangSpider(scrapy.Spider):
         cache_dir = Path(self.crawler.settings.get("CACHE_DIR")) / str(self.crawler.settings.getint("WAHLPERIODE")) / "feeds"
         feed_file = cache_dir / f"{response.selector.xpath('/Export').attrib.get('aktualisiert')}.xml"
 
-        if not cache_dir.exists():
-            cache_dir.mkdir(parents=True)
-
         if not feed_file.exists():
+            cache_dir.mkdir(parents=True, exist_ok=True)
             feed_file.write_text(response.text)
 
         gesetz_vorgang_dicts = [convert_element_to_dict(x) for x in response.selector.xpath("/Export/Vorgang[./VTyp[text() = 'Gesetz']]")]

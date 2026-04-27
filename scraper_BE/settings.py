@@ -6,14 +6,32 @@
 #     https://docs.scrapy.org/en/latest/topics/settings.html
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
+import os
 import uuid
 from pathlib import Path
+
+from scraper_BE.pipelines import (
+    AddAdditionalUrls,
+    BuildPaZuFaVorgang,
+    DownloadAndCacheDocuments,
+    ExtractTextFromPDF,
+    FixMissingDokUrl,
+    ReportAndDropErrors,
+    SubmitVorgang,
+    SummarizeExtractedPDFText,
+)
 
 # Custom Settings
 LOG_LEVEL = "INFO"
 SCRAPER_UUID = uuid.UUID("05dc56fc-24e1-442b-9f97-91d596d50471")
 WAHLPERIODE = 19
-CACHE_DIR = Path("cache")
+
+CACHE_DIR = Path(".cache")
+ERRORS_DIR = Path(".errors")
+
+API_SUBMIT = bool(os.environ.get("PAZUFA_API_SUBMIT"))
+API_BASE_URL = os.environ.get("PAZUFA_API_BASE_URL", "http://localhost:8080")
+API_TOKEN = os.environ.get("PAZUFA_API_TOKEN", "tegernsee-apfelsaft-co2grenzwert")
 
 # Scray Settings
 BOT_NAME = "PaZuFa_Berlin_Scraper"
@@ -69,6 +87,18 @@ DOWNLOAD_DELAY = 1
 # ITEM_PIPELINES = {
 #    "scraper_BE.pipelines.ScraperBePipeline": 300,
 # }
+ITEM_PIPELINES = {
+    # NOTE: Pipelines with <100 get proper items or dicts, which contain data an error.
+    ReportAndDropErrors: 99,
+    # NOTE: Pipelines with >= 100 only get properly parsed items.
+    FixMissingDokUrl: 100,
+    AddAdditionalUrls: 101,
+    DownloadAndCacheDocuments: 110,
+    ExtractTextFromPDF: 120,
+    SummarizeExtractedPDFText: 130,
+    BuildPaZuFaVorgang: 999,
+    SubmitVorgang: 1000,
+}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
