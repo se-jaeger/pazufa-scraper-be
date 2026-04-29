@@ -56,37 +56,9 @@ DOWNLOAD_DELAY = 1
 # COOKIES_ENABLED = False
 
 # Disable Telnet Console (enabled by default)
-# TELNETCONSOLE_ENABLED = False
-
-# Override the default request headers:
-# DEFAULT_REQUEST_HEADERS = {
-#    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-#    "Accept-Language": "en",
-# }
-
-# Enable or disable spider middlewares
-# See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
-# SPIDER_MIDDLEWARES = {
-#    "pazufa_scraper_be.middlewares.ScraperBeSpiderMiddleware": 543,
-# }
-
-# Enable or disable downloader middlewares
-# See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
-# DOWNLOADER_MIDDLEWARES = {
-#    "pazufa_scraper_be.middlewares.ScraperBeDownloaderMiddleware": 543,
-# }
-
-# Enable or disable extensions
-# See https://docs.scrapy.org/en/latest/topics/extensions.html
-# EXTENSIONS = {
-#    "scrapy.extensions.telnet.TelnetConsole": None,
-# }
+TELNETCONSOLE_ENABLED = False
 
 # Configure item pipelines
-# See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-# ITEM_PIPELINES = {
-#    "pazufa_scraper_be.pipelines.ScraperBePipeline": 300,
-# }
 ITEM_PIPELINES = {
     # NOTE: Pipelines with <100 get proper items or dicts, which contain data an error.
     ReportAndDropErrors: 99,

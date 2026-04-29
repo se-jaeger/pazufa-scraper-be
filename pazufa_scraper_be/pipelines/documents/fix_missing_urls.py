@@ -7,7 +7,7 @@ from scrapy import Request
 from scrapy.exceptions import DropItem
 from scrapy.http.request import NO_CALLBACK
 
-from pazufa_scraper_be.constants import DOK_BASE_URL
+from pazufa_scraper_be.constants import BESCHLUSSPROTOKOLL_ABBR, DOK_BASE_URL, INHALTSPROTOKOLL_ABBR, WORTPROTOKOLL_ABBR
 from pazufa_scraper_be.pardok import GesetzVorgang, PlPrDokument
 from pazufa_scraper_be.pipelines._base import BasePipeline
 
@@ -24,7 +24,7 @@ class FixMissingDokUrl(BasePipeline):
 
         for dokument in vorgang.dokumente:
             if isinstance(dokument, PlPrDokument) and dokument.lok_url is None and (dokument_nr := dokument.nr.split("/")[1]):
-                for abbr in ("bp", "ip", "wp"):
+                for abbr in (BESCHLUSSPROTOKOLL_ABBR, INHALTSPROTOKOLL_ABBR, WORTPROTOKOLL_ABBR):
                     url = f"{DOK_BASE_URL}/{self.wahlperiode}/PlenarPr/p{self.wahlperiode}-{int(dokument_nr):03d}-{abbr}.pdf"
 
                     request = Request(url, method="HEAD", callback=NO_CALLBACK)

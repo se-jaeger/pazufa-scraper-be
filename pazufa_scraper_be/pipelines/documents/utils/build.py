@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import re
-from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -11,11 +10,19 @@ from pazufa_api_client.models import Autor, Doktyp, Gremium, Parlament, Stations
 from pazufa_api_client.models import Dokument as PaZuFaDokument
 from pazufa_api_client.types import UNSET, Unset
 
-from pazufa_scraper_be.constants import FILE_BYTE_HASH_FILE_NAME, LAST_MODIFIED_FILE_NAME, SUMMARY_FILE_NAME, TEXT_FILE_NAME
-from pazufa_scraper_be.pardok import AnyGesetzDokument, APrDokument, BaseGesetzDokument, DrsDokument, GVBlDokument, PlPrDokument
+from pazufa_scraper_be.constants import (
+    BESCHLUSSPROTOKOLL_ABBR,
+    FILE_BYTE_HASH_FILE_NAME,
+    INHALTSPROTOKOLL_ABBR,
+    LAST_MODIFIED_FILE_NAME,
+    SUMMARY_FILE_NAME,
+    TEXT_FILE_NAME,
+    WORTPROTOKOLL_ABBR,
+)
+from pazufa_scraper_be.pardok import AnyGesetzDokument, APrDokument, BaseGesetzDokument, DokTyp, DrsDokument, GVBlDokument, PlPrDokument
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
     from pathlib import Path
 
     from pydantic import HttpUrl
@@ -42,19 +49,19 @@ def get_dokument_titel(dokument: BaseGesetzDokument, dokument_cache_dir: Path) -
         return dokument.titel
 
     drucksnr = get_dokument_drucksnr(dokument, dokument_cache_dir)
-    if isinstance(dokument, APrDokument) and dokument_cache_dir.name.endswith("-bp"):
+    if isinstance(dokument, APrDokument) and dokument_cache_dir.name.endswith(f"-{BESCHLUSSPROTOKOLL_ABBR}"):
         return f"Ausschuss Beschlussprotokoll{f' - {drucksnr}' if drucksnr else ''}"
 
-    if isinstance(dokument, APrDokument) and dokument_cache_dir.name.endswith("-ip"):
+    if isinstance(dokument, APrDokument) and dokument_cache_dir.name.endswith(f"-{INHALTSPROTOKOLL_ABBR}"):
         return f"Ausschuss Inhaltsprotokoll{f' - {drucksnr}' if drucksnr else ''}"
 
-    if isinstance(dokument, APrDokument) and dokument_cache_dir.name.endswith("-wp"):
+    if isinstance(dokument, APrDokument) and dokument_cache_dir.name.endswith(f"-{WORTPROTOKOLL_ABBR}"):
         return f"Ausschuss Wortprotokoll{f' - {drucksnr}' if drucksnr else ''}"
 
-    if isinstance(dokument, DrsDokument) and dokument.typ == "BeschlEmpf":
+    if isinstance(dokument, DrsDokument) and dokument.typ == DokTyp.BeschlEmpf:
         return f"Ausschuss Beschlussempfehlung{f' - {drucksnr}' if drucksnr else ''}"
 
-    if isinstance(dokument, DrsDokument) and dokument.typ == "ÄndAntr":
+    if isinstance(dokument, DrsDokument) and dokument.typ == DokTyp.AendAntr:
         return f"Änderungsantrag{f' - {drucksnr}' if drucksnr else ''}"
 
     if isinstance(dokument, GVBlDokument):
@@ -126,11 +133,11 @@ def get_station_gremium(dokument: BaseGesetzDokument) -> tuple[Gremium, bool | U
 def get_station_typ(dokument: BaseGesetzDokument) -> Stationstyp:
     if isinstance(dokument, DrsDokument):
         # NOTE: This is usually the Senate/Govermant
-        if dokument.typ == "VorlBeschl (GesEntw)":
+        if dokument.typ == DokTyp.VorlBeschl_GesEntw:
             return Stationstyp.PARL_INITIATIV
 
         # NOTE: This is from any member of the Plenum
-        if dokument.typ == "Antr (GesEntw)":
+        if dokument.typ == DokTyp.Antr_GesEntw:
             return Stationstyp.PARL_INITIATIV
 
     elif isinstance(dokument, PlPrDokument):
@@ -158,19 +165,19 @@ def build_pazufa_dokument(dokument: BaseGesetzDokument, dokument_cache_dir: Path
 
     # TODO
     doktyp_mapping = {
-        "Antr (GesEntw)": Doktyp.ANTRAG,
-        "Antr": Doktyp.ANTRAG,
-        "Behandlung im Plenum": Doktyp.REDEPROTOKOLL,
-        "Bekannt (GVBl)": Doktyp.SONSTIG,
-        "BeschlEmpf": Doktyp.BESCHLUSSEMPF,
-        "GVBl": Doktyp.SONSTIG,
-        "I. Lesung": Doktyp.REDEPROTOKOLL,
-        "II. Lesung": Doktyp.REDEPROTOKOLL,
-        "III. Lesung": Doktyp.REDEPROTOKOLL,
-        "VorlBeschl": Doktyp.BESCHLUSSEMPF,
-        "VorlBeschl (GesEntw)": Doktyp.BESCHLUSSEMPF,
-        "VorlBeschl (GesEntwErg)": Doktyp.BESCHLUSSEMPF,
-        "ÄndAntr": Doktyp.ANTRAG,
+        DokTyp.Antr_GesEntw: Doktyp.ANTRAG,
+        DokTyp.Antr: Doktyp.ANTRAG,
+        DokTyp.Behandlung_im_Plenum: Doktyp.REDEPROTOKOLL,
+        DokTyp.Bekannt_GVBl: Doktyp.SONSTIG,
+        DokTyp.BeschlEmpf: Doktyp.BESCHLUSSEMPF,
+        DokTyp.GVBl: Doktyp.SONSTIG,
+        DokTyp.Lesung_I: Doktyp.REDEPROTOKOLL,
+        DokTyp.Lesung_II: Doktyp.REDEPROTOKOLL,
+        DokTyp.Lesung_III: Doktyp.REDEPROTOKOLL,
+        DokTyp.VorlBeschl: Doktyp.BESCHLUSSEMPF,
+        DokTyp.VorlBeschl_GesEntw: Doktyp.BESCHLUSSEMPF,
+        DokTyp.VorlBeschl_GesEntwErg: Doktyp.BESCHLUSSEMPF,
+        DokTyp.Antr: Doktyp.ANTRAG,
     }
 
     if text_file.exists():

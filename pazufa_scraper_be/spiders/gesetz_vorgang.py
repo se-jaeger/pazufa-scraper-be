@@ -1,11 +1,11 @@
-from collections.abc import AsyncGenerator, Iterable
+from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
 
 import scrapy
 import scrapy.core.scheduler
 from pydantic import ValidationError
 from scrapy import Request
-from scrapy.http import XmlResponse
+from scrapy.http import Response, XmlResponse
 
 from pazufa_scraper_be.pardok import GesetzVorgang
 from pazufa_scraper_be.spiders.utils import convert_element_to_dict
@@ -21,7 +21,10 @@ class GesetzVorgangSpider(scrapy.Spider):
     async def start(self) -> AsyncGenerator:
         yield Request(url=self.start_url_template.format(self.crawler.settings.getint("WAHLPERIODE")))
 
-    def parse(self, response: XmlResponse) -> Request | scrapy.Item | Iterable[Request | scrapy.Item] | None:
+    def parse(self, response: Response) -> Generator[dict | GesetzVorgang]:
+        if not isinstance(response, XmlResponse):
+            msg = f"Expecting {XmlResponse} but got {type(response)}."
+            raise TypeError(msg)
 
         cache_dir = Path(self.crawler.settings.get("CACHE_DIR")) / str(self.crawler.settings.getint("WAHLPERIODE")) / "feeds"
         feed_file = cache_dir / f"{response.selector.xpath('/Export').attrib.get('aktualisiert')}.xml"

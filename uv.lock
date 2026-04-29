@@ -1297,24 +1297,26 @@ dev = [
     { name = "openapi-python-client" },
     { name = "ruff" },
     { name = "ty" },
+    { name = "types-lxml" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "kreuzberg", specifier = ">=4.4.6" },
+    { name = "kreuzberg", specifier = ">=4.9.5" },
     { name = "pazufa-api-client", editable = "pazufa_api_client" },
-    { name = "pydantic", specifier = ">=2.12.5" },
+    { name = "pydantic", specifier = ">=2.13.3" },
     { name = "python-magic", specifier = ">=0.4.27" },
-    { name = "scrapy", specifier = ">=2.14.1" },
+    { name = "scrapy", specifier = ">=2.15.1" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "jupyterlab", specifier = ">=4.5.5" },
+    { name = "jupyterlab", specifier = ">=4.5.6" },
     { name = "jupyterlab-vim", specifier = ">=4.1.4" },
-    { name = "openapi-python-client", specifier = ">=0.28.2" },
-    { name = "ruff", specifier = ">=0.15.2" },
-    { name = "ty", specifier = ">=0.0.18" },
+    { name = "openapi-python-client", specifier = ">=0.28.3" },
+    { name = "ruff", specifier = ">=0.15.12" },
+    { name = "ty", specifier = ">=0.0.32" },
+    { name = "types-lxml", specifier = ">=2026.2.16" },
 ]
 
 [[package]]
@@ -2144,6 +2146,42 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/83/b8/9ebb531b6c2d377af08ac6746a5df3425b21853a5d2260876919b58a2a4a/typer-0.24.2.tar.gz", hash = "sha256:ec070dcfca1408e85ee203c6365001e818c3b7fffe686fd07ff2d68095ca0480", size = 119849, upload-time = "2026-04-22T17:45:34.413Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/39/d1/9484b497e0a0410b901c12b8251c3e746e1e863f7d28419ffe06f7892fda/typer-0.24.2-py3-none-any.whl", hash = "sha256:b618bc3d721f9a8d30f3e05565be26416d06e9bcc29d49bc491dc26aba674fa8", size = 55977, upload-time = "2026-04-22T17:45:33.055Z" },
+]
+
+[[package]]
+name = "types-html5lib"
+version = "1.1.11.20260408"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "types-webencodings" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/16/59/914d00107c770e49fa57d4c4572e0371bbce14321385fd2ea3e06691b62d/types_html5lib-1.1.11.20260408.tar.gz", hash = "sha256:8a281aa367bc77dbc758358cd9bef79530f2d154eeed9b33705bb035a0dab9e4", size = 18316, upload-time = "2026-04-08T04:35:49.581Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/61/19/12d95e98e42e120522665ec6850b38df8d2c1cca94e21c4d7f8578acb64e/types_html5lib-1.1.11.20260408-py3-none-any.whl", hash = "sha256:d18dc4b90d6d6745585790b920db13ede43e1f8ff6ee1ac0ceb0dec4223a06fa", size = 24313, upload-time = "2026-04-08T04:35:48.679Z" },
+]
+
+[[package]]
+name = "types-lxml"
+version = "2026.2.16"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "beautifulsoup4" },
+    { name = "cssselect" },
+    { name = "types-html5lib" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/dd/ad/c70ac8cbdc28eb58a17301c69b4925af54b614e47f9b2ebc9de5cc10f786/types_lxml-2026.2.16.tar.gz", hash = "sha256:b3a1340cc06db98d541c785732f6f68bea438daff4e2b7809ef748d545d01406", size = 161204, upload-time = "2026-02-17T02:34:50.855Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5f/5c/03ec9befbf4bb5309bfd576c6a5ac1c75633f78f6b64cf1f594e97cd3d23/types_lxml-2026.2.16-py3-none-any.whl", hash = "sha256:5dd81ffa54830e5f361988737c5f1d6a0ae48b2742790637ec560df790ea0401", size = 97040, upload-time = "2026-02-17T02:34:49.286Z" },
+]
+
+[[package]]
+name = "types-webencodings"
+version = "0.5.0.20260408"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1c/d2/21567fac142315580ce3ee37d08a4e8819921dae833bbcd27b9f8b373799/types_webencodings-0.5.0.20260408.tar.gz", hash = "sha256:28c596619f367e43eee393d85f63e8d2fdb6874c654a8d441c37f8afe29c6d0d", size = 7504, upload-time = "2026-04-08T04:28:51.735Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8f/e4/f13be8f6d9a561166f7d963012d0ccc833e13aee3044c4f1a8fb1fee462a/types_webencodings-0.5.0.20260408-py3-none-any.whl", hash = "sha256:19a2afe5c22d9b1e880b49ff823c7b531f473a390fe47ac903c0bdb5cd677dd9", size = 8717, upload-time = "2026-04-08T04:28:50.943Z" },
 ]
 
 [[package]]

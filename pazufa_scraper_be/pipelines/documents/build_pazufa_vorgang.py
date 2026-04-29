@@ -10,7 +10,7 @@ from pazufa_api_client.models import Vorgang as PaZuFaVorgang
 from pazufa_api_client.types import UNSET
 from scrapy.exceptions import DropItem
 
-from pazufa_scraper_be.pardok import APrDokument, DrsDokument, GesetzVorgang, GVBlDokument, PlPrDokument
+from pazufa_scraper_be.pardok import APrDokument, DokTyp, DrsDokument, GesetzVorgang, GVBlDokument, PlPrDokument
 from pazufa_scraper_be.pipelines._base import CacheDirPipeline
 from pazufa_scraper_be.pipelines.documents.utils.build import (
     BackwardMergeRule,
@@ -31,12 +31,15 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
             msg = f"Expected {GesetzVorgang.__name__} object but got {vorgang.__class__.__name__}."
             raise DropItem(msg)
 
-        pardok_pazufa_doks: list[DokumentContainer] = []
-        for pardok_dok in vorgang.dokumente:
-            if pardok_pazufa_dok := DokumentContainer.from_pardok_dokument(
-                pardok_dokument=pardok_dok, get_dokument_cache_dir_function=self.get_dokument_cache_dir
-            ):
-                pardok_pazufa_doks.append(pardok_pazufa_dok)
+        pardok_pazufa_doks = [
+            pardok_pazufa_dok
+            for pardok_dok in vorgang.dokumente
+            if (
+                pardok_pazufa_dok := DokumentContainer.from_pardok_dokument(
+                    pardok_dokument=pardok_dok, get_dokument_cache_dir_function=self.get_dokument_cache_dir
+                )
+            )
+        ]
 
         rules = [
             DropRule(
@@ -54,17 +57,19 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
             ),
             ForwardMergeRule(
                 name="Merge Änderungsantrag onto next Lesung",
-                when=lambda current: isinstance(current.pardok, DrsDokument) and current.pardok.typ == "ÄndAntr",
-                merge_into=lambda _, target: isinstance(target.pardok, PlPrDokument) and "Lesung" in target.pardok.typ,
+                when=lambda current: isinstance(current.pardok, DrsDokument) and current.pardok.typ == DokTyp.AendAntr,
+                merge_into=lambda _, target: (
+                    isinstance(target.pardok, PlPrDokument) and target.pardok.typ in (DokTyp.Lesung_I, DokTyp.Lesung_II, DokTyp.Lesung_III)
+                ),
             ),
             ForwardMergeRule(
                 name="Merge Lesungen split into multiple onto last of its kind",
-                when=lambda current: isinstance(current.pardok, PlPrDokument) and current.pardok.typ in ("I. Lesung", "II. Lesung", "III. Lesung"),
+                when=lambda current: isinstance(current.pardok, PlPrDokument) and current.pardok.typ in (DokTyp.Lesung_I, DokTyp.Lesung_II, DokTyp.Lesung_III),
                 merge_into=lambda current, target: isinstance(target.pardok, PlPrDokument) and current.pardok.typ == target.pardok.typ,
             ),
             BackwardMergeRule(
                 name="Merge Beschlussempfehlung onto prev. Ausschussberatung of the same Ausschuss",
-                when=lambda current: isinstance(current.pardok, DrsDokument) and current.pardok.typ == "BeschlEmpf",
+                when=lambda current: isinstance(current.pardok, DrsDokument) and current.pardok.typ == DokTyp.BeschlEmpf,
                 merge_into=lambda current, target: isinstance(target.pardok, APrDokument) and current.pazufa[0].autoren == target.pazufa[0].autoren,
             ),
             BackwardMergeRule(

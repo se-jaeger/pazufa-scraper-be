@@ -8,6 +8,7 @@ from scrapy.crawler import Crawler
 from scrapy.exceptions import DropItem
 from scrapy.http.request import NO_CALLBACK
 
+from pazufa_scraper_be.constants import BESCHLUSSPROTOKOLL_ABBR, INHALTSPROTOKOLL_ABBR, WORTPROTOKOLL_ABBR
 from pazufa_scraper_be.pardok import APrDokument, GesetzVorgang
 
 logger = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ class AddAdditionalUrls:
                 original_url = str(dokument.lok_url)
                 dokument.lok_url = None
 
-                for abbr in ("bp", "ip", "wp"):
+                for abbr in (BESCHLUSSPROTOKOLL_ABBR, INHALTSPROTOKOLL_ABBR, WORTPROTOKOLL_ABBR):
                     url = original_url = original_url[:-6] + abbr + original_url[-4:]
 
                     request = Request(url, method="HEAD", callback=NO_CALLBACK)

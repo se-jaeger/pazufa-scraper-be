@@ -29,7 +29,7 @@ class ExtractTextFromPDF(CacheDirPipeline):
                             dokument_file,
                             config=kreuzberg.ExtractionConfig(enable_quality_processing=True, pages=kreuzberg.PageConfig(extract_pages=True), use_cache=False),
                         )
-                        text = "\n".join([page.get("content", "") for page in pdf.pages])
+                        text = "\n".join([page.get("content", "") for page in pdf.pages or []])
 
                         # fmt: off
                         # Some postprocessing that was necessary after eyeballing documents
