@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from pazufa_api_client.models import Autor, Doktyp, Gremium, Parlament, Stationstyp
-from pazufa_api_client.models import Dokument as PaZuFaDokument
-from pazufa_api_client.types import UNSET, Unset
+from pazufa_corelib.api_client.models import Autor, Doktyp, Gremium, Parlament, Stationstyp
+from pazufa_corelib.api_client.models import Dokument as PaZuFaDokument
+from pazufa_corelib.api_client.types import UNSET, Unset
 
 from pazufa_scraper_be.constants import (
     FILE_BYTE_HASH_FILE_NAME,

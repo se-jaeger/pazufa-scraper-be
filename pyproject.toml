@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 authors = [{ name = "Sebastian Jäger", email = "git@sebastian-jaeger.me" }]
 dependencies = [
   "kreuzberg>=4.9.5",
-  "pazufa_api_client",
+  "pazufa-corelib>=0.1.0",
   "pydantic>=2.13.3",
   "python-magic>=0.4.27",
   "scrapy>=2.15.1",
@@ -17,7 +17,6 @@ dependencies = [
 dev = [
   "jupyterlab>=4.5.6",
   "jupyterlab-vim>=4.1.4",
-  "openapi-python-client>=0.28.3",
   "ruff>=0.15.12",
   "ty>=0.0.32",
   "types-lxml>=2026.2.16",
@@ -55,11 +54,3 @@ convention = "google"
 
 [tool.ty.environment]
 python-version = "3.12"
-
-[tool.uv.workspace]
-members = [
-  "pazufa_api_client",
-]
-
-[tool.uv.sources]
-pazufa_api_client = { workspace = true, editable = true }

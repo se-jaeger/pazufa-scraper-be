@@ -5,9 +5,9 @@ import re
 import uuid
 from typing import Self
 
-from pazufa_api_client.models import Station, Stationstyp, VgIdent, Vorgang, Vorgangstyp
-from pazufa_api_client.models import Vorgang as PaZuFaVorgang
-from pazufa_api_client.types import UNSET
+from pazufa_corelib.api_client.models import Station, Stationstyp, VgIdent, Vorgang, Vorgangstyp
+from pazufa_corelib.api_client.models import Vorgang as PaZuFaVorgang
+from pazufa_corelib.api_client.types import UNSET
 from scrapy.exceptions import DropItem
 
 from pazufa_scraper_be.pardok import APrDokument, DokTyp, DrsDokument, GesetzVorgang, GVBlDokument, PlPrDokument

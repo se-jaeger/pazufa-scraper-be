@@ -2,11 +2,11 @@ import logging
 from http import HTTPStatus
 from typing import Self
 
-from pazufa_api_client.api.vorgang import vorgang_put
-from pazufa_api_client.models.vorgang import Vorgang
+from pazufa_corelib.api_client import AuthenticatedClient
+from pazufa_corelib.api_client.api.vorgang import vorgang_put
+from pazufa_corelib.api_client.models.vorgang import Vorgang
 from scrapy.exceptions import DropItem
 
-from pazufa_api_client import AuthenticatedClient
 from pazufa_scraper_be.pipelines._base import ApiPipeline
 
 logger = logging.getLogger(__name__)

@@ -23,7 +23,8 @@ from pazufa_scraper_be.pipelines import (
 )
 
 # Custom Settings
-LOG_LEVEL = "INFO"
+LOG_LEVEL = "WARNING"
+
 SCRAPER_UUID = uuid.UUID("05dc56fc-24e1-442b-9f97-91d596d50471")
 WAHLPERIODE = 19
 
@@ -43,7 +44,7 @@ NEWSPIDER_MODULE = "pazufa_scraper_be.spiders"
 ADDONS = {}
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-# USER_AGENT = "pazufa_scraper_be (+http://www.yourdomain.com)"
+USER_AGENT = "Parlamentszusammenfasser (PaZuFa) Berlin Scraper (+https://pazufa.de/)"
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = False  # NOTE: this is not nice
@@ -52,9 +53,7 @@ ROBOTSTXT_OBEY = False  # NOTE: this is not nice
 # CONCURRENT_REQUESTS = 16
 CONCURRENT_REQUESTS_PER_DOMAIN = 1
 DOWNLOAD_DELAY = 1
-
-# Disable cookies (enabled by default)
-# COOKIES_ENABLED = False
+CONCURRENT_ITEMS = 1
 
 # Disable Telnet Console (enabled by default)
 TELNETCONSOLE_ENABLED = False
@@ -90,10 +89,13 @@ ITEM_PIPELINES = {
 # Enable and configure HTTP caching (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html#httpcache-middleware-settings
 HTTPCACHE_ENABLED = True
-HTTPCACHE_EXPIRATION_SECS = 60 * 60 * 24
+HTTPCACHE_EXPIRATION_SECS = 7 * 60 * 60 * 24
 HTTPCACHE_DIR = "httpcache"
 HTTPCACHE_IGNORE_HTTP_CODES = []
 HTTPCACHE_STORAGE = "scrapy.extensions.httpcache.FilesystemCacheStorage"
+
+# HTTPCACHE_IGNORE_HTTP_CODES = []
+# HTTPCACHE_ALWAYS_STORE = True
 
 # Set settings whose default value is deprecated to a future-proof value
 FEED_EXPORT_ENCODING = "utf-8"
