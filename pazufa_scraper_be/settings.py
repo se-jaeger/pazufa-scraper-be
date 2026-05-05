@@ -16,6 +16,7 @@ from pazufa_scraper_be.pipelines import (
     DownloadAndCacheDocuments,
     ExtractTextFromPDF,
     FixMissingDokUrl,
+    RemoveBrokenUrl,
     ReportAndDropErrors,
     SubmitVorgang,
     SummarizeExtractedPDFText,
@@ -63,8 +64,9 @@ ITEM_PIPELINES = {
     # NOTE: Pipelines with <100 get proper items or dicts, which contain data an error.
     ReportAndDropErrors: 99,
     # NOTE: Pipelines with >= 100 only get properly parsed items.
-    FixMissingDokUrl: 100,
-    AddAdditionalUrls: 101,
+    RemoveBrokenUrl: 100,
+    FixMissingDokUrl: 101,
+    AddAdditionalUrls: 102,
     DownloadAndCacheDocuments: 110,
     ExtractTextFromPDF: 120,
     SummarizeExtractedPDFText: 130,

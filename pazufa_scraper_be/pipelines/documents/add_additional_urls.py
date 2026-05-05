@@ -8,8 +8,8 @@ from scrapy.crawler import Crawler
 from scrapy.exceptions import DropItem
 from scrapy.http.request import NO_CALLBACK
 
-from pazufa_scraper_be.constants import BESCHLUSSPROTOKOLL_ABBR, INHALTSPROTOKOLL_ABBR, WORTPROTOKOLL_ABBR
 from pazufa_scraper_be.pardok import APrDokument, GesetzVorgang
+from pazufa_scraper_be.pardok.dokument import AusschussprotokollTyp
 
 logger = logging.getLogger(__name__)
 
@@ -31,11 +31,11 @@ class AddAdditionalUrls:
             # Ausschussprotokolle can have up to three documents: Beschlussprotokoll, Inhaltsprotokoll and Wortprotokoll.
             # The last two are optional but the pardok XML does not always serve the first one.
             # So we check which exit and add all to the list.
-            if isinstance(dokument, APrDokument) and dokument.lok_url is not None:
+            if isinstance(dokument, APrDokument):
                 original_url = str(dokument.lok_url)
-                dokument.lok_url = None
+                primary_url_set = False
 
-                for abbr in (BESCHLUSSPROTOKOLL_ABBR, INHALTSPROTOKOLL_ABBR, WORTPROTOKOLL_ABBR):
+                for abbr in AusschussprotokollTyp:
                     url = original_url = original_url[:-6] + abbr + original_url[-4:]
 
                     request = Request(url, method="HEAD", callback=NO_CALLBACK)
@@ -44,8 +44,9 @@ class AddAdditionalUrls:
                         http_url = HttpUrl(url)
 
                         # Using above priority, we set primary url and continue
-                        if dokument.lok_url is None:
+                        if not primary_url_set:
                             dokument.lok_url = http_url
+                            primary_url_set = True
                             continue
 
                         if dokument.additional_urls is None:

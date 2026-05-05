@@ -4,6 +4,7 @@ from .documents import (
     DownloadAndCacheDocuments,
     ExtractTextFromPDF,
     FixMissingDokUrl,
+    RemoveBrokenUrl,
     SummarizeExtractedPDFText,
 )
 from .errors import ReportAndDropErrors
@@ -15,6 +16,7 @@ __all__ = [
     "DownloadAndCacheDocuments",
     "ExtractTextFromPDF",
     "FixMissingDokUrl",
+    "RemoveBrokenUrl",
     "ReportAndDropErrors",
     "SubmitVorgang",
     "SummarizeExtractedPDFText",

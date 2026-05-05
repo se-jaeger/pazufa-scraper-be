@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Annotated, Any, Self
+from typing import Annotated, Any
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from pazufa_scraper_be.pardok.dokument import AnyGesetzDokument, parse_dokument
 from pazufa_scraper_be.pardok.utils import CoercedStrList, ensure_list, ignore_invalid_factory
@@ -37,34 +37,9 @@ class GesetzVorgang(BaseModel):
     dokumente: Annotated[
         list[Annotated[AnyGesetzDokument, Field(discriminator="art")]],
         # NOTE: Order of validators is crucial - last runs first.
-        BeforeValidator(lambda dokumente: [parse_dokument(dokument) for dokument in dokumente]),
+        BeforeValidator(lambda dokumente: [dokument for dok in dokumente if (dokument := parse_dokument(dok))]),
         BeforeValidator(ensure_list),
     ] = Field(alias="Dokument", default_factory=list)
-
-    @model_validator(mode="after")
-    def ensure_VID_equals_VNr(self) -> Self:
-        if self.id != self.nr:
-            msg = "'VID' is expected to be equal to 'VNr'"
-            raise ValueError(msg)
-
-        return self
-
-    @model_validator(mode="after")
-    def ensure_VIR_is_X(self) -> Self:
-        if self.ir != "X":
-            msg = "'VIR' is expected to be 'X'"
-            raise ValueError(msg)
-
-        return self
-
-    @model_validator(mode="after")
-    def ensure_valid_VTyp_to_VTypL_mapping(self) -> Self:
-        mapping = {"Gesetz": "Gesetzgebung"}
-        if self.typ_l != mapping[self.typ]:
-            msg = "'VTypL' is not as expected by given 'VTyp'"
-            raise ValueError(msg)
-
-        return self
 
     def model_post_init(self, _context: Any) -> None:
         for dokument in self.dokumente:

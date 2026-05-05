@@ -29,14 +29,14 @@ class SummarizeExtractedPDFText(CacheDirPipeline):
 
                         if len(summary) == 0:
                             msg = f"[{vorgang.id} - {dokument.id}]: Summary is empty!"
-                            logger.warning(msg)
+                            logger.info(msg)
 
                         elif magic.from_buffer(summary, mime=True) != "text/plain":
                             error_file = self.get_errors_dir() / f"{dokument.id}.summary"
                             error_file.write_text(summary)
 
                             msg = f"[{vorgang.id} - {dokument.id}]: Summary is not plain text!"
-                            logger.warning(msg)
+                            logger.info(msg)
 
                         else:
                             dokument_summary_file.write_text(summary)

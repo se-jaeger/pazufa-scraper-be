@@ -51,13 +51,11 @@ class DownloadAndCacheDocuments(CacheDirPipeline):
 
                     if not isinstance(response, Response):
                         msg = f"[{vorgang.id} - {dokument.id}]: Expected 'scrapy.Response' but got '{type(response)}'"
-
                         logger.warning(msg)
                         continue
 
                     if response.status != HTTPStatus.OK:
                         msg = f"[{vorgang.id} - {dokument.id}]: Got {response.status} status code for URL: {response.url}"
-
                         logger.warning(msg)
                         continue
 

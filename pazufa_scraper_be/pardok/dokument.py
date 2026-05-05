@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import logging
 from enum import StrEnum
-from typing import TYPE_CHECKING, Annotated, Literal, Self, get_args
+from typing import TYPE_CHECKING, Annotated, Literal, get_args
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, HttpUrl, PrivateAttr, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, HttpUrl, PrivateAttr, ValidationError
 
 from pazufa_scraper_be.pardok.utils import CoercedStrList, GermanDate  # noqa: TC001
 
@@ -21,7 +21,14 @@ class DokArt(StrEnum):
     Drs = "Drs"
 
 
+class AusschussprotokollTyp(StrEnum):
+    Beschluss = "bp"
+    Inhalt = "ip"
+    Wort = "wp"
+
+
 class DokTyp(StrEnum):
+    APr = "APr"
     ABespr_Par_21_Abs_3_GO = "ABespr § 21 Abs. 3 GO"
     ABespr = "ABespr"
     Antr_GesEntw = "Antr (GesEntw)"
@@ -40,6 +47,9 @@ class DokTyp(StrEnum):
     VorlBeschl_GesEntw = "VorlBeschl (GesEntw)"
     VorlBeschl_GesEntwErg = "VorlBeschl (GesEntwErg)"
     AendAntr = "ÄndAntr"
+    MittlgKenntn = "MittlgKenntn"
+    MittlgKenntn_Zwischenber = "MittlgKenntn (Zwischenber)"
+    MittlgKenntn_Schlussber = "MittlgKenntn (Schlussber)"
 
 
 class BaseGesetzDokument(BaseModel):
@@ -77,68 +87,8 @@ class BaseGesetzDokument(BaseModel):
     def all_urls(self) -> list[HttpUrl]:
         return ([self.lok_url] if self.lok_url else []) + (self.additional_urls or [])
 
-    @model_validator(mode="after")
-    def ensure_valid_DokTyp_to_DokTypL_mapping(self) -> Self:
-        mapping = {
-            DokTyp.ABespr_Par_21_Abs_3_GO: "Ausschussbesprechung § 21 Abs. 3 GO",
-            DokTyp.ABespr: "Ausschussbesprechung",
-            DokTyp.Antr_GesEntw: "Antrag (Gesetzentwurf)",
-            DokTyp.Antr: "Antrag",
-            DokTyp.Ausschussberatung: "Ausschussberatung",
-            DokTyp.ABericht_Zwischenbericht: "Ausschussbericht (Zwischenbericht)",
-            DokTyp.Behandlung_im_Plenum: "Behandlung im Plenum",
-            DokTyp.Bekannt_GVBl: "Bekanntmachung (Gesetz- und Verordnungsblatt)",
-            DokTyp.BeschlEmpf: "Beschlussempfehlung",
-            DokTyp.GVBl: "Gesetz- und Verordnungsblatt",
-            DokTyp.Lesung_I: "I. Lesung",
-            DokTyp.Lesung_II: "II. Lesung",
-            DokTyp.Lesung_III: "III. Lesung",
-            DokTyp.Neufassung: "Neufassung",
-            DokTyp.VorlBeschl: "Vorlage zur Beschlussfassung",
-            DokTyp.VorlBeschl_GesEntw: "Vorlage zur Beschlussfassung (Gesetzentwurf)",
-            DokTyp.VorlBeschl_GesEntwErg: "Vorlage zur Beschlussfassung (Gesetzentwurf/Ergänzung)",
-            DokTyp.AendAntr: "Änderungsantrag",
-        }
-        if self.typ_l != mapping.get(self.typ):
-            msg = f"DokTypL is not as expected by given DokTyp: '{self.typ_l}'"
-            logger.warning(msg)
-
-        return self
-
-    @model_validator(mode="after")
-    def ensure_valid_DokArt_to_DokArtL_mapping(self) -> Self:
-        mapping = {
-            DokArt.PlPr: "Plenarprotokoll",
-            DokArt.APr: "Ausschussprotokoll",
-            DokArt.GVBl: "Gesetz- und Verordnungsblatt",
-            DokArt.Drs: "Drucksache",
-        }
-        if self.art_l != mapping[self.art]:
-            msg = "'DokArtL' is not as expected by given 'DokArt'"
-            raise ValueError(msg)
-
-        return self
-
-    @model_validator(mode="after")
-    def ensure_valid_DHerk_to_DHerk_mapping(self) -> Self:
-        mapping = {"BLN": "Berlin"}
-        if self.herk_l != mapping[self.herk]:
-            msg = "'DHerkL' is not as expected by given 'DHerk'"
-            raise ValueError(msg)
-
-        return self
-
-    @model_validator(mode="after")
-    def ensure_DHerk_is_BLN(self) -> Self:
-        if self.herk != "BLN":
-            msg = "'DHerk' is expected to be 'BLN'"
-            raise ValueError(msg)
-
-        return self
-
 
 class Protokoll(BaseGesetzDokument):
-    lok_url: HttpUrl | None = Field(default=None, alias="LokURL")
     dat: GermanDate | None = Field(default=None, alias="DokDat")
 
 
@@ -166,7 +116,7 @@ class GVBlDokument(BaseGesetzDokument, DeskTitelSbMixin):
 
     vk_dat: GermanDate = Field(alias="VkDat")
     jg: str = Field(alias="Jg")
-    h_nr: str = Field(default=None, alias="HNr")
+    h_nr: str = Field(alias="HNr")
     nr: str | None = Field(default=None, alias="DokNr")
 
 
@@ -184,7 +134,7 @@ class Nebeneintrag(BaseModel):
 AnyGesetzDokument = PlPrDokument | GVBlDokument | APrDokument | DrsDokument
 
 
-def parse_dokument(data: dict | AnyGesetzDokument) -> AnyGesetzDokument:
+def parse_dokument(data: dict | AnyGesetzDokument) -> AnyGesetzDokument | None:
     if isinstance(data, get_args(AnyGesetzDokument)):
         return data
 
@@ -205,4 +155,12 @@ def parse_dokument(data: dict | AnyGesetzDokument) -> AnyGesetzDokument:
         msg = f"Unknown DokArt: {art}. Has to be one of: {', '.join(mapping.keys())}."
         raise ValueError(msg)
 
-    return dokument_class(**data)
+    try:
+        dokument = dokument_class(**data)
+
+    except ValidationError:
+        msg = f"Ignoring invalid Dokument: {data['DBID']}"
+        logger.info(msg)
+        dokument = None
+
+    return dokument

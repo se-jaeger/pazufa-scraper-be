@@ -17,9 +17,10 @@ from pazufa_scraper_be.pipelines.documents.utils.build import (
     DokumentContainer,
     DropRule,
     ForwardMergeRule,
+    apply_rules,
+    build_pazufa_dokument,
     get_station_gremium,
     get_station_typ,
-    process_dokumente,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,15 +32,19 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
             msg = f"Expected {GesetzVorgang.__name__} object but got {vorgang.__class__.__name__}."
             raise DropItem(msg)
 
-        pardok_pazufa_doks = [
-            pardok_pazufa_dok
-            for pardok_dok in vorgang.dokumente
-            if (
-                pardok_pazufa_dok := DokumentContainer.from_pardok_dokument(
-                    pardok_dokument=pardok_dok, get_dokument_cache_dir_function=self.get_dokument_cache_dir
-                )
-            )
-        ]
+        pardok_pazufa_doks = []
+        for pardok in vorgang.dokumente:
+            pazufa = []
+            for url in pardok.all_urls:
+                if pazufa_dokument := build_pazufa_dokument(dokument=pardok, dokument_cache_dir=self.get_dokument_cache_dir(dokument=pardok, url=url), url=url):
+                    pazufa.append(pazufa_dokument)
+
+            if len(pazufa) > 0:
+                pardok_pazufa_doks.append(DokumentContainer(pardok, pazufa))
+
+        if len(pardok_pazufa_doks) == 0:
+            msg = f"[{vorgang.id}]: Could not create any Dokument from Vorgang."
+            raise DropItem(msg)
 
         rules = [
             DropRule(
@@ -62,8 +67,8 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
                     isinstance(target.pardok, PlPrDokument) and target.pardok.typ in (DokTyp.Lesung_I, DokTyp.Lesung_II, DokTyp.Lesung_III)
                 ),
             ),
-            ForwardMergeRule(
-                name="Merge Lesungen split into multiple onto last of its kind",
+            BackwardMergeRule(
+                name="Merge Lesungen split into multiple onto first of its kind",
                 when=lambda current: isinstance(current.pardok, PlPrDokument) and current.pardok.typ in (DokTyp.Lesung_I, DokTyp.Lesung_II, DokTyp.Lesung_III),
                 merge_into=lambda current, target: isinstance(target.pardok, PlPrDokument) and current.pardok.typ == target.pardok.typ,
             ),
@@ -77,10 +82,16 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
                 when=lambda current: isinstance(current.pardok, GVBlDokument),
                 merge_into=lambda _, target: isinstance(target.pardok, GVBlDokument),
             ),
+            BackwardMergeRule(
+                name="Merge Gesetzentwurf Ergänzung onto initial Gesetzentwurf",
+                when=lambda current: isinstance(current.pardok, DrsDokument) and current.pardok.typ == DokTyp.VorlBeschl_GesEntwErg,
+                merge_into=lambda _, target: isinstance(target.pardok, DrsDokument) and target.pardok.typ == DokTyp.VorlBeschl_GesEntw,
+            ),
         ]
-        pardok_pazufa_doks = process_dokumente(pardok_pazufa_doks=pardok_pazufa_doks, rules=rules)
 
-        if not pardok_pazufa_doks:
+        pardok_pazufa_doks = apply_rules(pardok_pazufa_doks=pardok_pazufa_doks, rules=rules)
+
+        if len(pardok_pazufa_doks) == 0:
             msg = f"[{vorgang.id}]: Could not create any Stations."
             raise DropItem(msg)
 

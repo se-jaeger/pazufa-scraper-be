@@ -44,7 +44,7 @@ class ExtractTextFromPDF(CacheDirPipeline):
                         if len(text) == 0:
                             # TODO: Use OCR as fallback
                             msg = f"[{vorgang.id} - {dokument.id}]: No text extracted!"
-                            logger.warning(msg)
+                            logger.info(msg)
 
                         elif magic.from_buffer(text, mime=True) != "text/plain":
                             error_file = self.get_errors_dir() / f"{dokument.id}.text"

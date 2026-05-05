@@ -28,7 +28,7 @@ def ignore_invalid_factory(cls: type[BaseModel]) -> Callable[..., list]:
 
             except ValidationError:
                 msg = f"Ignoring invalid {cls.__name__}: {item}"
-                logger.warning(msg)
+                logger.info(msg)
 
         return result
 

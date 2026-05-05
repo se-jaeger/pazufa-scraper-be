@@ -11,15 +11,13 @@ from pazufa_api_client.models import Dokument as PaZuFaDokument
 from pazufa_api_client.types import UNSET, Unset
 
 from pazufa_scraper_be.constants import (
-    BESCHLUSSPROTOKOLL_ABBR,
     FILE_BYTE_HASH_FILE_NAME,
-    INHALTSPROTOKOLL_ABBR,
     LAST_MODIFIED_FILE_NAME,
     SUMMARY_FILE_NAME,
     TEXT_FILE_NAME,
-    WORTPROTOKOLL_ABBR,
 )
-from pazufa_scraper_be.pardok import AnyGesetzDokument, APrDokument, BaseGesetzDokument, DokTyp, DrsDokument, GVBlDokument, PlPrDokument
+from pazufa_scraper_be.pardok import APrDokument, BaseGesetzDokument, DokTyp, DrsDokument, GVBlDokument, PlPrDokument
+from pazufa_scraper_be.pardok.dokument import AusschussprotokollTyp
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -49,13 +47,13 @@ def get_dokument_titel(dokument: BaseGesetzDokument, dokument_cache_dir: Path) -
         return dokument.titel
 
     drucksnr = get_dokument_drucksnr(dokument, dokument_cache_dir)
-    if isinstance(dokument, APrDokument) and dokument_cache_dir.name.endswith(f"-{BESCHLUSSPROTOKOLL_ABBR}"):
+    if isinstance(dokument, APrDokument) and dokument_cache_dir.name.endswith(f"-{AusschussprotokollTyp.Beschluss}"):
         return f"Ausschuss Beschlussprotokoll{f' - {drucksnr}' if drucksnr else ''}"
 
-    if isinstance(dokument, APrDokument) and dokument_cache_dir.name.endswith(f"-{INHALTSPROTOKOLL_ABBR}"):
+    if isinstance(dokument, APrDokument) and dokument_cache_dir.name.endswith(f"-{AusschussprotokollTyp.Inhalt}"):
         return f"Ausschuss Inhaltsprotokoll{f' - {drucksnr}' if drucksnr else ''}"
 
-    if isinstance(dokument, APrDokument) and dokument_cache_dir.name.endswith(f"-{WORTPROTOKOLL_ABBR}"):
+    if isinstance(dokument, APrDokument) and dokument_cache_dir.name.endswith(f"-{AusschussprotokollTyp.Wort}"):
         return f"Ausschuss Wortprotokoll{f' - {drucksnr}' if drucksnr else ''}"
 
     if isinstance(dokument, DrsDokument) and dokument.typ == DokTyp.BeschlEmpf:
@@ -184,27 +182,25 @@ def build_pazufa_dokument(dokument: BaseGesetzDokument, dokument_cache_dir: Path
         volltext = text_file.read_text()
 
     else:
-        # TODO: fail?
-        msg = f"[{dokument.vorgang.id} - {dokument.id}]: Text file does not exist!"
+        msg = f"[{dokument.vorgang.id} - {dokument.id}]: Text file does not exist, ignoring Dokument!"
         logger.warning(msg)
-        volltext = "TODO: volltext"
+        return None
 
     if summary_file.exists():
         zusammenfassung = summary_file.read_text()
 
     else:
         msg = f"[{dokument.vorgang.id} - {dokument.id}]: Summary file does not exist!"
-        logger.warning(msg)
+        logger.info(msg)
         zusammenfassung = UNSET
 
     if file_byte_hash_file.exists():
-        hash = file_byte_hash_file.read_text()
+        hash_ = file_byte_hash_file.read_text()
 
     else:
-        # TODO: fail?
-        msg = f"[{dokument.vorgang.id} - {dokument.id}]: Hash file does not exist!"
+        msg = f"[{dokument.vorgang.id} - {dokument.id}]: Hash file does not exist, ignoring Dokument!"
         logger.warning(msg)
-        hash = "TODO: hash"
+        return None
 
     # TODO: check if this can be handgled by pardok model
     date = datetime(dokument.dat.year, dokument.dat.month, dokument.dat.day, tzinfo=UTC) if dokument.dat is not None else datetime.now(tz=UTC)
@@ -223,7 +219,7 @@ def build_pazufa_dokument(dokument: BaseGesetzDokument, dokument_cache_dir: Path
         zp_referenz=date,
         zp_modifiziert=modified_date,
         link=str(url),
-        hash_=hash,
+        hash_=hash_,
         autoren=get_dokument_autoren(dokument),
         drucksnr=get_dokument_drucksnr(dokument, dokument_cache_dir),
         kurztitel=UNSET,  # TODO
@@ -239,19 +235,6 @@ def build_pazufa_dokument(dokument: BaseGesetzDokument, dokument_cache_dir: Path
 class DokumentContainer:
     pardok: BaseGesetzDokument
     pazufa: list[PaZuFaDokument]
-
-    @classmethod
-    def from_pardok_dokument(
-        cls, pardok_dokument: AnyGesetzDokument, get_dokument_cache_dir_function: Callable[[AnyGesetzDokument, HttpUrl], Path | None]
-    ) -> DokumentContainer | None:
-        pardok = pardok_dokument
-        pazufa = []
-
-        for url in pardok.all_urls:
-            pazufa_dokument = build_pazufa_dokument(dokument=pardok, dokument_cache_dir=get_dokument_cache_dir_function(pardok, url), url=url)
-            pazufa.append(pazufa_dokument)
-
-        return cls(pardok=pardok, pazufa=pazufa) if pazufa else None
 
 
 @dataclass
@@ -273,14 +256,16 @@ class ChangeRule(Rule):
     change_function: Callable[[DokumentContainer], DokumentContainer]
 
 
+def merge_function(current: DokumentContainer, target: DokumentContainer) -> DokumentContainer:
+    abstract = ((target.pardok.abstract or "") + "\n\n" + (current.pardok.abstract or "")).strip()
+    target.pardok.abstract = abstract or None
+    return DokumentContainer(pardok=target.pardok, pazufa=target.pazufa + current.pazufa)
+
+
 @dataclass
 class _MergeRule(Rule):
-    name: str
-    when: Callable[[DokumentContainer], bool]
     merge_into: Callable[[DokumentContainer, DokumentContainer], bool]
-    merge_function: Callable[[DokumentContainer, DokumentContainer], DokumentContainer] = lambda current, target: DokumentContainer(
-        pardok=target.pardok, pazufa=target.pazufa + current.pazufa
-    )
+    merge_function: Callable[[DokumentContainer, DokumentContainer], DokumentContainer] = merge_function
 
 
 @dataclass
@@ -293,7 +278,7 @@ class BackwardMergeRule(_MergeRule):
     pass
 
 
-def flush_pending_forward_rules(pending: list[tuple[DokumentContainer, ForwardMergeRule]], current: DokumentContainer) -> list:
+def flush_pending_forward_rules(pending: list[tuple[DokumentContainer, ForwardMergeRule]], current: DokumentContainer) -> tuple[list, DokumentContainer]:
     remaining = []
     for pending_item, pending_rule in pending:
         if pending_rule.merge_into(pending_item, current):
@@ -302,44 +287,48 @@ def flush_pending_forward_rules(pending: list[tuple[DokumentContainer, ForwardMe
         else:
             remaining.append((pending_item, pending_rule))
 
-    return remaining
+    return remaining, current
 
 
-def process_dokumente(pardok_pazufa_doks: list[DokumentContainer], rules: Sequence[Rule]) -> list[DokumentContainer]:
+def apply_rules(pardok_pazufa_doks: list[DokumentContainer], rules: Sequence[Rule]) -> list[DokumentContainer]:
 
     result: list[DokumentContainer] = []
     pending: list[tuple[DokumentContainer, ForwardMergeRule]] = []
 
     for index, current in enumerate(pardok_pazufa_doks):
-        pending = flush_pending_forward_rules(pending=pending, current=current)
+        pending, current = flush_pending_forward_rules(pending=pending, current=current)
 
-        no_rule_applied = True
+        rule_applied = False
         for rule in rules:
             if rule(current):
                 match rule:
                     case ForwardMergeRule():
                         for target in pardok_pazufa_doks[index + 1 :]:
                             if rule.merge_into(current, target):
-                                no_rule_applied = False
+                                rule_applied = True
                                 pending.append((current, rule))
                                 break
 
                     case BackwardMergeRule():
                         for i in reversed(range(len(result))):
                             if rule.merge_into(current, result[i]):
-                                no_rule_applied = False
+                                rule_applied = True
                                 result[i] = rule.merge_function(current, result[i])
                                 break
 
                     case ChangeRule():
-                        no_rule_applied = False
+                        rule_applied = True
                         # TODO
 
                     case DropRule():
-                        no_rule_applied = False
+                        rule_applied = True
                         break
 
-        if no_rule_applied:
+        if not rule_applied:
             result.append(current)
+
+    if len(pending) > 0:
+        msg = f"[{pardok_pazufa_doks[0].pardok.vorgang.id}]: Did not consume all pending items."
+        logger.warning(msg)
 
     return result
