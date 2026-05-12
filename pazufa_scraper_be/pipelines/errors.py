@@ -14,5 +14,5 @@ class ReportAndDropErrors:
             msg = f"Could not properly parse Vorgang '{item['dict']['VID']}', handling error and moving on."
             raise DropItem(msg)
 
-        msg = "This should not happen!"
+        msg = "This should not happen."
         raise DropItem(msg)

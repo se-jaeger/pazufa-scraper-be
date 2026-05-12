@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 import uuid
+from datetime import timedelta
 from typing import Self
 
 from pazufa_corelib.api_client.models import Station, Stationstyp, VgIdent, Vorgang, Vorgangstyp
@@ -32,7 +33,7 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
             msg = f"Expected {GesetzVorgang.__name__} object but got {vorgang.__class__.__name__}."
             raise DropItem(msg)
 
-        pardok_pazufa_doks = []
+        dok_containers = []
         for pardok in vorgang.dokumente:
             pazufa = []
             for url in pardok.all_urls:
@@ -40,9 +41,9 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
                     pazufa.append(pazufa_dokument)
 
             if len(pazufa) > 0:
-                pardok_pazufa_doks.append(DokumentContainer(pardok, pazufa))
+                dok_containers.append(DokumentContainer(pardok, pazufa))
 
-        if len(pardok_pazufa_doks) == 0:
+        if len(dok_containers) == 0:
             msg = f"[{vorgang.id}]: Could not create any Dokument from Vorgang."
             raise DropItem(msg)
 
@@ -89,25 +90,22 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
             ),
         ]
 
-        pardok_pazufa_doks = apply_rules(pardok_pazufa_doks=pardok_pazufa_doks, rules=rules)
+        dok_containers = apply_rules(pardok_pazufa_doks=dok_containers, rules=rules)
 
-        if len(pardok_pazufa_doks) == 0:
+        if len(dok_containers) == 0:
             msg = f"[{vorgang.id}]: Could not create any Stations."
             raise DropItem(msg)
 
         stationen = []
-        for item in pardok_pazufa_doks:
-            pardok_dokument = item.pardok
-            pazufa_dokumente = item.pazufa
-
-            gremium, gremium_federf = get_station_gremium(dokument=pardok_dokument)
+        for dok_container in dok_containers:
+            gremium, gremium_federf = get_station_gremium(dok_container)
             station = Station(
-                zp_start=pazufa_dokumente[0].zp_referenz,
+                zp_start=dok_container.pazufa[0].zp_referenz,
                 gremium=gremium,
-                typ=get_station_typ(dokument=pardok_dokument),
-                dokumente=pazufa_dokumente,
-                titel=pardok_dokument.typ_l or UNSET,
-                zp_modifiziert=pazufa_dokumente[-1].zp_modifiziert,
+                typ=get_station_typ(dok_container),
+                dokumente=dok_container.pazufa,
+                titel=dok_container.pardok.typ_l or UNSET,
+                zp_modifiziert=dok_container.pazufa[-1].zp_modifiziert,
                 gremium_federf=gremium_federf,
                 # link: str | Unset = UNSET
                 # trojanergefahr: int | Unset = UNSET
@@ -117,19 +115,20 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
             )
             stationen.append(station)
 
-            if station.typ == Stationstyp.PARL_VOLLVLSGN and pardok_dokument.abstract is not None:
-                if bool(re.search("^angenommen|^zustimmung", pardok_dokument.abstract, flags=re.IGNORECASE)):
+            if station.typ == Stationstyp.PARL_VOLLVLSGN and dok_container.pardok.abstract is not None:
+                if bool(re.search("^angenommen|^zustimmung", dok_container.pardok.abstract, flags=re.IGNORECASE)):
                     typ = Stationstyp.PARL_AKZEPTANZ
 
-                elif bool(re.search("^abgelehnt", pardok_dokument.abstract, flags=re.IGNORECASE)):
+                elif bool(re.search("^abgelehnt", dok_container.pardok.abstract, flags=re.IGNORECASE)):
                     typ = Stationstyp.PARL_ABLEHNUNG
 
                 else:
                     typ = None
 
                 if typ:
-                    split_station = Station.from_dict(station.to_dict() | {"typ": typ, "titel": "TODO: split station titel"})
-                    stationen.append(split_station)
+                    new_station = Station.from_dict(station.to_dict() | {"typ": typ, "titel": "TODO: split station titel"})
+                    new_station.zp_start = station.zp_start + timedelta(hours=1)
+                    stationen.append(new_station)
 
         return Vorgang(
             api_id=uuid.uuid5(self.crawler.settings.get("SCRAPER_UUID"), vorgang.id),

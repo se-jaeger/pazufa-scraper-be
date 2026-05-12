@@ -17,7 +17,7 @@ from pazufa_scraper_be.constants import (
     TEXT_FILE_NAME,
 )
 from pazufa_scraper_be.pardok import APrDokument, BaseGesetzDokument, DokTyp, DrsDokument, GVBlDokument, PlPrDokument
-from pazufa_scraper_be.pardok.dokument import AusschussprotokollTyp
+from pazufa_scraper_be.pardok.dokument import AusschussprotokollTyp, DokArt
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -26,6 +26,38 @@ if TYPE_CHECKING:
     from pydantic import HttpUrl
 
 logger = logging.getLogger(__name__)
+
+
+def get_dokument_typ(dokument: BaseGesetzDokument) -> Doktyp:
+    doktyp_mapping = {
+        # Gesetzentwuerfe
+        (DokArt.Drs, DokTyp.Antr_GesEntw): Doktyp.ENTWURF,
+        (DokArt.Drs, DokTyp.VorlBeschl_GesEntw): Doktyp.ENTWURF,
+        (DokArt.Drs, DokTyp.VorlBeschl_GesEntwErg): Doktyp.ENTWURF,
+        # Lesungen
+        (DokArt.PlPr, DokTyp.Behandlung_im_Plenum): Doktyp.REDEPROTOKOLL,
+        (DokArt.PlPr, DokTyp.Lesung_I): Doktyp.REDEPROTOKOLL,
+        (DokArt.PlPr, DokTyp.Lesung_II): Doktyp.REDEPROTOKOLL,
+        # Ausschussberatung und Beschlussempfehlung
+        (DokArt.APr, DokTyp.Ausschussberatung): Doktyp.REDEPROTOKOLL,
+        (DokArt.APr, DokTyp.ABespr_Par_21_Abs_3_GO): Doktyp.REDEPROTOKOLL,
+        (DokArt.APr, DokTyp.APr): Doktyp.REDEPROTOKOLL,
+        (DokArt.APr, DokTyp.BeschlEmpf): Doktyp.BESCHLUSSEMPF,
+        (DokArt.Drs, DokTyp.BeschlEmpf): Doktyp.BESCHLUSSEMPF,
+        # Gesetzesblatt
+        (DokArt.GVBl, DokTyp.GVBl): Doktyp.SONSTIG,
+        (DokArt.GVBl, DokTyp.Bekannt_GVBl): Doktyp.SONSTIG,
+        (DokArt.GVBl, DokTyp.Neufassung): Doktyp.SONSTIG,
+        # Verschiedenes
+        (DokArt.Drs, DokTyp.AendAntr): Doktyp.ANTRAG,
+        (DokArt.Drs, DokTyp.Antr): Doktyp.ANTRAG,
+    }
+    if ret_val := doktyp_mapping.get((dokument.art, dokument.typ)):
+        return ret_val
+
+    msg = f"[{dokument.vorgang.id} - {dokument.id}]: Using fallback for Doktyp."
+    logger.info(msg)
+    return Doktyp.SONSTIG
 
 
 def get_dokument_drucksnr(dokument: BaseGesetzDokument, dokument_cache_dir: Path | None) -> str:
@@ -89,15 +121,17 @@ def get_dokument_autoren(dokument: BaseGesetzDokument) -> list[Autor]:
     return autoren
 
 
-def get_station_gremium(dokument: BaseGesetzDokument) -> tuple[Gremium, bool | Unset]:
-    if isinstance(dokument, DrsDokument):
-        gremium_name = f"{', '.join(dokument.urheber[:-1])}{f' und {dokument.urheber[-1]}' if len(dokument.urheber) > 1 else ''}"
+def get_station_gremium(dok_container: DokumentContainer) -> tuple[Gremium, bool | Unset]:
+    if isinstance(dok_container.pardok, DrsDokument):
+        gremium_name = (
+            f"{', '.join(dok_container.pardok.urheber[:-1])}{f' und {dok_container.pardok.urheber[-1]}' if len(dok_container.pardok.urheber) > 1 else ''}"
+        )
         gremium_federf = UNSET
 
     # NOTE: It should always be a single value with Ausschuss name, so we take the first that fit
-    if isinstance(dokument, APrDokument):
+    if isinstance(dok_container.pardok, APrDokument):
         gremium_name = ""
-        for x in dokument.urheber:
+        for x in dok_container.pardok.urheber:
             if bool(re.search("ausschuss", x, flags=re.IGNORECASE)):
                 gremium_name = x
                 break
@@ -110,17 +144,17 @@ def get_station_gremium(dokument: BaseGesetzDokument) -> tuple[Gremium, bool | U
             gremium_name = gremium_name.strip()
             gremium_federf = False
 
-    elif isinstance(dokument, PlPrDokument):
+    elif isinstance(dok_container.pardok, PlPrDokument):
         gremium_name = "Plenum"
         gremium_federf = UNSET
 
-    elif isinstance(dokument, GVBlDokument):
+    elif isinstance(dok_container.pardok, GVBlDokument):
         gremium_name = "Gesetzesblatt"
         gremium_federf = UNSET
 
     gremium = Gremium(
         parlament=Parlament.BE,
-        wahlperiode=dokument.wp,
+        wahlperiode=dok_container.pardok.wp,
         name=gremium_name,
         link=UNSET,
     )
@@ -128,27 +162,22 @@ def get_station_gremium(dokument: BaseGesetzDokument) -> tuple[Gremium, bool | U
     return gremium, gremium_federf
 
 
-def get_station_typ(dokument: BaseGesetzDokument) -> Stationstyp:
-    if isinstance(dokument, DrsDokument):
-        # NOTE: This is usually the Senate/Govermant
-        if dokument.typ == DokTyp.VorlBeschl_GesEntw:
-            return Stationstyp.PARL_INITIATIV
+def get_station_typ(dok_container: DokumentContainer) -> Stationstyp:
 
-        # NOTE: This is from any member of the Plenum
-        if dokument.typ == DokTyp.Antr_GesEntw:
-            return Stationstyp.PARL_INITIATIV
+    if isinstance(dok_container.pardok, DrsDokument) and dok_container.pazufa[0].typ == Doktyp.ENTWURF:
+        return Stationstyp.PARL_INITIATIV
 
-    elif isinstance(dokument, PlPrDokument):
+    if isinstance(dok_container.pardok, PlPrDokument):
         return Stationstyp.PARL_VOLLVLSGN
 
-    elif isinstance(dokument, APrDokument):
+    if isinstance(dok_container.pardok, APrDokument):
         return Stationstyp.PARL_AUSSCHBER
 
-    if isinstance(dokument, GVBlDokument):
+    if isinstance(dok_container.pardok, GVBlDokument):
         return Stationstyp.POSTPARL_GSBLT
 
-    msg = f"[{dokument.vorgang.id} - {dokument.id}]: Using fallback for Stationstyp!"
-    logger.warning(msg)
+    msg = f"[{dok_container.pardok.vorgang.id} - {dok_container.pardok.id}]: Using fallback for Stationstyp."
+    logger.info(msg)
     return Stationstyp.SONSTIG
 
 
@@ -161,28 +190,11 @@ def build_pazufa_dokument(dokument: BaseGesetzDokument, dokument_cache_dir: Path
     last_modified_file = dokument_cache_dir / LAST_MODIFIED_FILE_NAME
     file_byte_hash_file = dokument_cache_dir / FILE_BYTE_HASH_FILE_NAME
 
-    # TODO
-    doktyp_mapping = {
-        DokTyp.Antr_GesEntw: Doktyp.ANTRAG,
-        DokTyp.Antr: Doktyp.ANTRAG,
-        DokTyp.Behandlung_im_Plenum: Doktyp.REDEPROTOKOLL,
-        DokTyp.Bekannt_GVBl: Doktyp.SONSTIG,
-        DokTyp.BeschlEmpf: Doktyp.BESCHLUSSEMPF,
-        DokTyp.GVBl: Doktyp.SONSTIG,
-        DokTyp.Lesung_I: Doktyp.REDEPROTOKOLL,
-        DokTyp.Lesung_II: Doktyp.REDEPROTOKOLL,
-        DokTyp.Lesung_III: Doktyp.REDEPROTOKOLL,
-        DokTyp.VorlBeschl: Doktyp.BESCHLUSSEMPF,
-        DokTyp.VorlBeschl_GesEntw: Doktyp.BESCHLUSSEMPF,
-        DokTyp.VorlBeschl_GesEntwErg: Doktyp.BESCHLUSSEMPF,
-        DokTyp.Antr: Doktyp.ANTRAG,
-    }
-
     if text_file.exists():
         volltext = text_file.read_text()
 
     else:
-        msg = f"[{dokument.vorgang.id} - {dokument.id}]: Text file does not exist, ignoring Dokument!"
+        msg = f"[{dokument.vorgang.id} - {dokument.id}]: Text file does not exist, ignoring Dokument."
         logger.warning(msg)
         return None
 
@@ -190,7 +202,7 @@ def build_pazufa_dokument(dokument: BaseGesetzDokument, dokument_cache_dir: Path
         zusammenfassung = summary_file.read_text()
 
     else:
-        msg = f"[{dokument.vorgang.id} - {dokument.id}]: Summary file does not exist!"
+        msg = f"[{dokument.vorgang.id} - {dokument.id}]: Summary file does not exist."
         logger.info(msg)
         zusammenfassung = UNSET
 
@@ -198,7 +210,7 @@ def build_pazufa_dokument(dokument: BaseGesetzDokument, dokument_cache_dir: Path
         hash_ = file_byte_hash_file.read_text()
 
     else:
-        msg = f"[{dokument.vorgang.id} - {dokument.id}]: Hash file does not exist, ignoring Dokument!"
+        msg = f"[{dokument.vorgang.id} - {dokument.id}]: Hash file does not exist, ignoring Dokument."
         logger.warning(msg)
         return None
 
@@ -213,7 +225,7 @@ def build_pazufa_dokument(dokument: BaseGesetzDokument, dokument_cache_dir: Path
         modified_date = date
 
     return PaZuFaDokument(
-        typ=doktyp_mapping.get(dokument.typ, Doktyp.SONSTIG),
+        typ=get_dokument_typ(dokument),
         titel=get_dokument_titel(dokument, dokument_cache_dir),
         volltext=volltext,
         zp_referenz=date,
@@ -242,8 +254,8 @@ class Rule:
     name: str
     when: Callable[[DokumentContainer], bool]
 
-    def __call__(self, item: DokumentContainer) -> bool:
-        return self.when(item)
+    def __call__(self, dok_container: DokumentContainer) -> bool:
+        return self.when(dok_container)
 
 
 @dataclass

@@ -23,7 +23,7 @@ from pazufa_scraper_be.pipelines import (
 )
 
 # Custom Settings
-LOG_LEVEL = "WARNING"
+LOG_LEVEL = "INFO"
 
 SCRAPER_UUID = uuid.UUID("05dc56fc-24e1-442b-9f97-91d596d50471")
 WAHLPERIODE = 19
@@ -31,11 +31,13 @@ WAHLPERIODE = 19
 CACHE_DIR = Path(".cache")
 ERRORS_DIR = Path(".errors")
 
-API_SUBMIT = bool(os.environ.get("PAZUFA_API_SUBMIT"))
 API_BASE_URL = os.environ.get("PAZUFA_API_BASE_URL", "http://localhost:8080")
-API_TOKEN = os.environ.get("PAZUFA_API_TOKEN", "tegernsee-apfelsaft-co2grenzwert")
+API_TOKEN = os.environ.get("PAZUFA_API_TOKEN")
 
-# Scray Settings
+LLM_TOKEN = os.environ.get("PAZUFA_LLM_TOKEN")
+LLM_MODEL = os.environ.get("PAZUFA_LLM_MODEL", "openrouter/openai/gpt-5-nano")
+
+# Scrapy Settings
 BOT_NAME = "PaZuFa_Berlin_Scraper"
 
 SPIDER_MODULES = ["pazufa_scraper_be.spiders"]

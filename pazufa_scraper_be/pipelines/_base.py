@@ -1,13 +1,20 @@
+import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Self
 
+from pazufa_corelib.api_client import AuthenticatedClient
+from pazufa_corelib.api_client.api.vorgang import vorgang_put
+from pazufa_corelib.api_client.models.vorgang import Vorgang
+from pazufa_corelib.api_client.types import Response
 from pydantic import HttpUrl
 from scrapy.crawler import Crawler
 from scrapy.statscollectors import StatsCollector
 
 from pazufa_scraper_be.constants import DOK_BASE_URL
 from pazufa_scraper_be.pardok import AnyGesetzDokument
+
+logger = logging.getLogger(__name__)
 
 
 class BasePipeline(ABC):
@@ -19,7 +26,7 @@ class BasePipeline(ABC):
         self.crawler = crawler
         self.wahlperiode = self.crawler.settings.getint("WAHLPERIODE")
 
-        if not self.wahlperiode:
+        if self.wahlperiode is None:
             msg = "Missing WAHLPERIODE setting."
             raise ValueError(msg)
 
@@ -34,11 +41,11 @@ class CacheDirPipeline(BasePipeline):
         self._cache_dir = Path(self.crawler.settings.get("CACHE_DIR")) / str(self.wahlperiode)
         self._errors_dir = Path(self.crawler.settings.get("ERRORS_DIR")) / str(self.wahlperiode)
 
-        if not self._cache_dir:
+        if self._cache_dir is None:
             msg = "Missing CACHE_DIR setting."
             raise ValueError(msg)
 
-        if not self._errors_dir:
+        if self._errors_dir is None:
             msg = "Missing ERRORS_DIR setting."
             raise ValueError(msg)
 
@@ -62,19 +69,29 @@ class CacheDirPipeline(BasePipeline):
 
 class ApiPipeline(BasePipeline):
     def init(self: Self) -> None:
-        self.api_submit = self.crawler.settings.getbool("API_SUBMIT")
-        self.api_base_url = self.crawler.settings.get("API_BASE_URL")
-        self.api_token = self.crawler.settings.get("API_TOKEN")
-        self.scraper_uuid = self.crawler.settings.get("SCRAPER_UUID")
+        super().init()
 
-        if not self.api_base_url:
-            msg = "Missing API_BASE_URL setting."
-            raise ValueError(msg)
+        self._api_base_url = self.crawler.settings.get("API_BASE_URL", None)
+        self._api_token = self.crawler.settings.get("API_TOKEN", None)
+        self._scraper_uuid = self.crawler.settings.get("SCRAPER_UUID", None)
 
-        if not self.api_token:
-            msg = "Missing API_TOKEN setting."
-            raise ValueError(msg)
-
-        if not self.scraper_uuid:
+        if self._scraper_uuid is None:
             msg = "Missing SCRAPER_UUID setting."
             raise ValueError(msg)
+
+        if self._api_token is not None:
+            if self._api_base_url is None:
+                msg = "If API_TOKEN is set, API_BASE_URL setting is required."
+                raise ValueError(msg)
+
+        else:
+            msg = "API_TOKEN is not set. Will not submit to backend."
+            logger.info(msg)
+
+    async def put_vorgang(self: Self, vorgang: Vorgang) -> Response | None:
+        if self._api_token is None:
+            return None
+
+        client = AuthenticatedClient(base_url=self._api_base_url, token=self._api_token, prefix="", auth_header_name="X-API-Key")
+        async with client:
+            return await vorgang_put.asyncio_detailed(client=client, body=vorgang, x_scraper_id=str(self._scraper_uuid))
