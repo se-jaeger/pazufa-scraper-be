@@ -1,4 +1,3 @@
-import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Self
@@ -7,6 +6,7 @@ from pazufa_corelib.api_client import AuthenticatedClient
 from pazufa_corelib.api_client.api.vorgang import vorgang_put
 from pazufa_corelib.api_client.models.vorgang import Vorgang
 from pazufa_corelib.api_client.types import Response
+from pazufa_corelib.llm import LLMConnector
 from pydantic import HttpUrl
 from scrapy.crawler import Crawler
 from scrapy.statscollectors import StatsCollector
@@ -38,6 +38,8 @@ class BasePipeline(ABC):
 
 class CacheDirPipeline(BasePipeline):
     def init(self: Self) -> None:
+        super().init()
+
         self._cache_dir = Path(self.crawler.settings.get("CACHE_DIR")) / str(self.wahlperiode)
         self._errors_dir = Path(self.crawler.settings.get("ERRORS_DIR")) / str(self.wahlperiode)
 
@@ -95,3 +97,30 @@ class ApiPipeline(BasePipeline):
         client = AuthenticatedClient(base_url=self._api_base_url, token=self._api_token, prefix="", auth_header_name="X-API-Key")
         async with client:
             return await vorgang_put.asyncio_detailed(client=client, body=vorgang, x_scraper_id=str(self._scraper_uuid))
+
+
+class LLMPipeline(BasePipeline):
+    def init(self: Self) -> None:
+        super().init()
+
+        self._llm_token = self.crawler.settings.get("LLM_TOKEN", None)
+        self.llm_model_name = self.crawler.settings.get("LLM_MODEL", None)
+        self.llm_connector = None
+
+        if self._llm_token is not None:
+            if self.llm_model_name is None:
+                msg = "If LLM_TOKEN is set, LLM_MODEL setting is required."
+                raise ValueError(msg)
+
+            import litellm
+
+            logging.getLogger("LiteLLM").setLevel(logging.FATAL)
+            litellm.suppress_debug_info = True
+
+            logging.getLogger("pazufa_corelib.llm.llm_connector").setLevel(logging.FATAL)
+
+            self.llm_connector = LLMConnector(model=self.llm_model_name, api_key=self._llm_token)
+
+        else:
+            msg = "LLM_TOKEN is not set. Skipping Document summarization."
+            logger.info(msg)
