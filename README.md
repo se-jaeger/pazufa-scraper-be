@@ -11,6 +11,12 @@ uv install
 openapi-python-client generate --url https://codeberg.org/PaZuFa/parlamentszusammenfasser/raw/branch/main/openapi.yml --meta uv --config openapi-python-client-config.yaml
 ```
 
+If you want to make use of git hooks
+
+```bash
+prek install
+```
+
 ## Usage
 
 ```bash
@@ -24,7 +30,7 @@ scrapy runspider -s WAHLPERIODE=18 pazufa_scraper_be/spiders/gesetz_vorgang.py
 
 ## Testing
 
-Unit and integration tests are organized as 
+Unit and integration tests are organized as
 
 ```text
 tests
