@@ -75,7 +75,7 @@ class DownloadAndCacheDocuments(CacheDirPipeline):
                 # We should at least save the history.
                 else:
                     # request = Request(url, method="HEAD", callback=NO_CALLBACK)
-                    # response = await self.crawler.engine.download_async(request)  # ty:ignore[unresolved-attribute]
+                    # response = await self.crawler.engine.download_async(request)
                     # if last_modified_header_as_byte := response.headers.get("Last-Modified"):
                     #     last_modified_header = datetime.strptime(last_modified_header_as_byte.decode("utf-8"), "%a, %d %b %Y %H:%M:%S %Z").isoformat()
                     #     download_tiem_cache = datetime.fromisoformat(dokument_download_time_file.read_text())

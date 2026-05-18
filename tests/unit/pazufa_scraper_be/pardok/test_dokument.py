@@ -1,6 +1,8 @@
-import pytest
 from typing import Any
-from pazufa_scraper_be.pardok.dokument import parse_dokument, PlPrDokument, APrDokument, GVBlDokument, AnyGesetzDokument, DrsDokument
+
+import pytest
+
+from pazufa_scraper_be.pardok.dokument import AnyGesetzDokument, APrDokument, DrsDokument, GVBlDokument, PlPrDokument, parse_dokument
 
 
 @pytest.fixture

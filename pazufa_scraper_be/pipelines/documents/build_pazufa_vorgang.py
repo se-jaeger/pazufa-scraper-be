@@ -4,9 +4,9 @@ import logging
 import re
 import uuid
 from datetime import timedelta
-from typing import Self
+from typing import Self, cast
 
-from pazufa_corelib.api_client.models import Station, Stationstyp, VgIdent, Vorgang, Vorgangstyp
+from pazufa_corelib.api_client.models import Dokument, Station, Stationstyp, VgIdent, Vorgang, Vorgangstyp
 from pazufa_corelib.api_client.models import Vorgang as PaZuFaVorgang
 from pazufa_corelib.api_client.types import UNSET
 from scrapy.exceptions import DropItem
@@ -103,7 +103,7 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
                 zp_start=dok_container.pazufa[0].zp_referenz,
                 gremium=gremium,
                 typ=get_station_typ(dok_container),
-                dokumente=dok_container.pazufa,
+                dokumente=cast("list[Dokument | str]", dok_container.pazufa),
                 titel=dok_container.pardok.typ_l or UNSET,
                 zp_modifiziert=dok_container.pazufa[-1].zp_modifiziert,
                 gremium_federf=gremium_federf,
