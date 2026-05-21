@@ -11,7 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 class SubmitVorgang(ApiPipeline):
+    """Pipeline that submits a built Vorgang to the PaZuFa API."""
+
     async def process_item(self: Self, vorgang: Vorgang) -> None:
+        """Submit the Vorgang to the PaZuFa API via HTTP PUT."""
         if not isinstance(vorgang, Vorgang):
             msg = f"Expected {Vorgang.__name__} object but got {vorgang.__class__.__name__}."
             raise DropItem(msg)

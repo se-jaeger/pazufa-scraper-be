@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_dokument_typ(dokument: BaseGesetzDokument) -> Doktyp:
+    """Map a document's art/typ combination to the corresponding PaZuFa Doktyp."""
     doktyp_mapping = {
         # Gesetzentwuerfe
         (DokArt.Drs, DokTyp.Antr_GesEntw): Doktyp.ENTWURF,
@@ -61,6 +62,7 @@ def get_dokument_typ(dokument: BaseGesetzDokument) -> Doktyp:
 
 
 def get_dokument_drucksnr(dokument: BaseGesetzDokument, dokument_cache_dir: Path | None) -> str:
+    """Return the Drucksachennummer string for a document."""
     if isinstance(dokument, (DrsDokument, PlPrDokument)):
         return dokument.nr
 
@@ -74,7 +76,9 @@ def get_dokument_drucksnr(dokument: BaseGesetzDokument, dokument_cache_dir: Path
     return ""
 
 
-def get_dokument_titel(dokument: BaseGesetzDokument, dokument_cache_dir: Path) -> str:
+# TODO(se-jaeger): refactor to reduce complexity
+def get_dokument_titel(dokument: BaseGesetzDokument, dokument_cache_dir: Path) -> str:  # noqa: PLR0911
+    """Derive a human-readable title for a document, falling back to its art label."""
     if hasattr(dokument, "titel") and type(dokument.titel) is str:
         return dokument.titel
 
@@ -100,21 +104,22 @@ def get_dokument_titel(dokument: BaseGesetzDokument, dokument_cache_dir: Path) -
     if dokument.nr is not None:
         return f"{dokument.art_l} - {dokument.nr}"
 
-    # TODO: log
+    # TODO(se-jaeger): log
     return dokument.art_l
 
 
 def get_dokument_autoren(dokument: BaseGesetzDokument) -> list[Autor]:
+    """Extract and clean the list of Autoren from a document."""
     autoren = []
 
     for urheber in getattr(dokument, "urheber", []):
-        urheber = re.sub(r" \(federführend\)", "", urheber, flags=re.IGNORECASE).strip()
-        if isinstance(dokument, APrDokument) and not bool(re.search("ausschuss", urheber, flags=re.IGNORECASE)):
+        cleaned = re.sub(r" \(federführend\)", "", urheber, flags=re.IGNORECASE).strip()
+        if isinstance(dokument, APrDokument) and not bool(re.search("ausschuss", cleaned, flags=re.IGNORECASE)):
             continue
 
         autoren.append(
             Autor(
-                organisation=urheber,
+                organisation=cleaned,
             )
         )
 
@@ -122,6 +127,7 @@ def get_dokument_autoren(dokument: BaseGesetzDokument) -> list[Autor]:
 
 
 def get_station_gremium(dok_container: DokumentContainer) -> tuple[Gremium, bool | Unset]:
+    """Determine the Gremium and whether it is federführend for a DokumentContainer."""
     if isinstance(dok_container.pardok, DrsDokument):
         gremium_name = (
             f"{', '.join(dok_container.pardok.urheber[:-1])}{f' und {dok_container.pardok.urheber[-1]}' if len(dok_container.pardok.urheber) > 1 else ''}"
@@ -156,6 +162,7 @@ def get_station_gremium(dok_container: DokumentContainer) -> tuple[Gremium, bool
         parlament=Parlament.BE,
         wahlperiode=dok_container.pardok.wp,
         name=gremium_name,
+        # NOTE: Following should be revisited
         link=UNSET,
     )
 
@@ -163,7 +170,7 @@ def get_station_gremium(dok_container: DokumentContainer) -> tuple[Gremium, bool
 
 
 def get_station_typ(dok_container: DokumentContainer) -> Stationstyp:
-
+    """Map a DokumentContainer to the corresponding PaZuFa Stationstyp."""
     if isinstance(dok_container.pardok, DrsDokument) and dok_container.pazufa[0].typ == Doktyp.ENTWURF:
         return Stationstyp.PARL_INITIATIV
 
@@ -182,6 +189,7 @@ def get_station_typ(dok_container: DokumentContainer) -> Stationstyp:
 
 
 def build_pazufa_dokument(dokument: BaseGesetzDokument, dokument_cache_dir: Path | None, url: HttpUrl) -> PaZuFaDokument | None:
+    """Build a PaZuFaDokument from a cached document, returning None if required files are missing."""
     if dokument_cache_dir is None:
         return None
 
@@ -214,7 +222,7 @@ def build_pazufa_dokument(dokument: BaseGesetzDokument, dokument_cache_dir: Path
         logger.warning(msg)
         return None
 
-    # TODO: check if this can be handgled by pardok model
+    # TODO(se-jaeger): check if this can be handled by pardok model
     date = datetime(dokument.dat.year, dokument.dat.month, dokument.dat.day, tzinfo=UTC) if dokument.dat is not None else datetime.now(tz=UTC)
 
     if last_modified_file.exists():
@@ -234,41 +242,50 @@ def build_pazufa_dokument(dokument: BaseGesetzDokument, dokument_cache_dir: Path
         hash_=hash_,
         autoren=get_dokument_autoren(dokument),
         drucksnr=get_dokument_drucksnr(dokument, dokument_cache_dir),
-        kurztitel=UNSET,  # TODO
-        vorwort=UNSET,  # TODO
         zusammenfassung=zusammenfassung,
+        # NOTE: Following should be revisited
+        kurztitel=UNSET,
+        vorwort=UNSET,
         zp_erstellt=UNSET,
-        meinung=UNSET,  # TODO: 1-5 or None
-        schlagworte=UNSET,  # TODO:
+        meinung=UNSET,
+        schlagworte=UNSET,
     )
 
 
 @dataclass
 class DokumentContainer:
+    """Container pairing a pardok document with its derived PaZuFa documents."""
+
     pardok: BaseGesetzDokument
     pazufa: list[PaZuFaDokument]
 
 
 @dataclass
 class Rule:
+    """Base rule that evaluates whether a DokumentContainer matches a condition."""
+
     name: str
     when: Callable[[DokumentContainer], bool]
 
     def __call__(self, dok_container: DokumentContainer) -> bool:
+        """Evaluate the rule's condition against dok_container."""
         return self.when(dok_container)
 
 
 @dataclass
 class DropRule(Rule):
-    pass
+    """Rule that drops matching DokumentContainers from the pipeline."""
 
 
 @dataclass
-class ChangeRule(Rule):
-    change_function: Callable[[DokumentContainer], DokumentContainer]
+class TransformRule(Rule):
+    """Rule that transforms a matching DokumentContainer."""
+
+    transform_function: Callable[[DokumentContainer], DokumentContainer]
 
 
 def merge_function(current: DokumentContainer, target: DokumentContainer) -> DokumentContainer:
+    """Merge current into target by concatenating abstracts and combining pazufa document lists."""
     abstract = ((target.pardok.abstract or "") + "\n\n" + (current.pardok.abstract or "")).strip()
     target.pardok.abstract = abstract or None
     return DokumentContainer(pardok=target.pardok, pazufa=target.pazufa + current.pazufa)
@@ -282,15 +299,16 @@ class _MergeRule(Rule):
 
 @dataclass
 class ForwardMergeRule(_MergeRule):
-    pass
+    """Rule that merges the current container into a subsequent matching container."""
 
 
 @dataclass
 class BackwardMergeRule(_MergeRule):
-    pass
+    """Rule that merges the current container into a preceding matching container."""
 
 
 def flush_pending_forward_rules(pending: list[tuple[DokumentContainer, ForwardMergeRule]], current: DokumentContainer) -> tuple[list, DokumentContainer]:
+    """Apply any pending forward-merge rules that match the current container."""
     remaining = []
     for pending_item, pending_rule in pending:
         if pending_rule.merge_into(pending_item, current):
@@ -302,13 +320,14 @@ def flush_pending_forward_rules(pending: list[tuple[DokumentContainer, ForwardMe
     return remaining, current
 
 
-def apply_rules(pardok_pazufa_doks: list[DokumentContainer], rules: Sequence[Rule]) -> list[DokumentContainer]:
-
+# TODO(se-jaeger): refactor to reduce complexity
+def apply_rules(pardok_pazufa_doks: list[DokumentContainer], rules: Sequence[Rule]) -> list[DokumentContainer]:  # noqa: C901, PLR0912
+    """Apply the given rules to a list of DokumentContainers, returning the reduced list."""
     result: list[DokumentContainer] = []
     pending: list[tuple[DokumentContainer, ForwardMergeRule]] = []
 
-    for index, current in enumerate(pardok_pazufa_doks):
-        pending, current = flush_pending_forward_rules(pending=pending, current=current)
+    for index, item in enumerate(pardok_pazufa_doks):
+        pending, current = flush_pending_forward_rules(pending=pending, current=item)
 
         rule_applied = False
         for rule in rules:
@@ -328,9 +347,9 @@ def apply_rules(pardok_pazufa_doks: list[DokumentContainer], rules: Sequence[Rul
                                 result[i] = rule.merge_function(current, result[i])
                                 break
 
-                    case ChangeRule():
+                    case TransformRule():
                         rule_applied = True
-                        # TODO
+                        # TODO(se-jaeger): implement ChangeRule action
 
                     case DropRule():
                         rule_applied = True

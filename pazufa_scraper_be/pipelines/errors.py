@@ -6,7 +6,10 @@ from pazufa_scraper_be.pardok import GesetzVorgang
 
 
 class ReportAndDropErrors:
+    """Pipeline that reports parse errors and drops malformed items."""
+
     def process_item(self: Self, item: dict | GesetzVorgang) -> GesetzVorgang:
+        """Pass through valid GesetzVorgang items; raise DropItem for error dicts."""
         if isinstance(item, GesetzVorgang):
             return item
 

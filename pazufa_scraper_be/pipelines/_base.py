@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Self
 
+import litellm
 from pazufa_corelib.api_client import AuthenticatedClient
 from pazufa_corelib.api_client.api.vorgang import vorgang_put
 from pazufa_corelib.api_client.models.vorgang import Vorgang
@@ -56,7 +57,8 @@ class CacheDirPipeline(BasePipeline):
         if url != dokument.lok_url and dokument.additional_urls and url not in dokument.additional_urls:
             return None
 
-        # NOTE: cache dir is Dokument URL without constant base, we replace 'Dok Art' part to be consistent with rest of code base and drop the '.pdf' suffix in dir name.
+        # NOTE: cache dir is Dokument URL without constant base, we replace 'Dok Art' part to be consistent
+        # with rest of code base and drop the '.pdf' suffix in dir name.
         dokument_cache_dir = self._cache_dir / "dokument" / dokument.art
         dokument_cache_dir = dokument_cache_dir.joinpath(*Path(str(url).removeprefix(f"{DOK_BASE_URL}/{self.wahlperiode}/")).with_suffix("").parts[1:])
 
@@ -112,8 +114,6 @@ class LLMPipeline(BasePipeline):
             if self.llm_model_name is None:
                 msg = "If LLM_TOKEN is set, LLM_MODEL setting is required."
                 raise ValueError(msg)
-
-            import litellm
 
             logging.getLogger("LiteLLM").setLevel(logging.FATAL)
             litellm.suppress_debug_info = True  # ty: ignore[invalid-assignment]

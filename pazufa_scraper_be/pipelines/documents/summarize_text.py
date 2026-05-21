@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from typing import Self
 
+import anyio
 import magic
 from pazufa_corelib.llm import LLMConnector, LLMProviderError
 from scrapy.exceptions import DropItem
@@ -19,6 +20,7 @@ class LLMSummaryNotImplementedError(NotImplementedError):
 
 
 async def summarize(llm_connector: LLMConnector, dokument: BaseGesetzDokument, text_file: Path) -> str | None:
+    """Summarize extracted document text via the LLM connector, dispatching by document type."""
     if len(dokument.vorgang.dokumente) > 0:
         titel = getattr(dokument.vorgang.dokumente[0], "titel", "")
         vorgang_vnr = dokument.vorgang.dokumente[0].nr or ""
@@ -26,7 +28,7 @@ async def summarize(llm_connector: LLMConnector, dokument: BaseGesetzDokument, t
     else:
         titel = vorgang_vnr = ""
 
-    text = text_file.read_text()
+    text = await anyio.Path(text_file).read_text()
 
     if isinstance(dokument, Protokoll):
         if relevant_section := await llm_connector.extract_relevant_section(text=text, vorgang_titel=titel, vorgang_vnr=vorgang_vnr):
@@ -42,11 +44,16 @@ async def summarize(llm_connector: LLMConnector, dokument: BaseGesetzDokument, t
 
 
 class SummarizeExtractedPDFText(CacheDirPipeline, LLMPipeline):
+    """Pipeline that summarizes extracted document text via an LLM."""
+
     def link(self: Self, summary_file: Path, model_specific_summary_file: Path) -> None:
+        """Create a symlink from summary_file pointing to the model-specific summary file."""
         summary_file.unlink(missing_ok=True)
         summary_file.symlink_to(model_specific_summary_file.relative_to(summary_file.parent))
 
-    async def process_item(self: Self, vorgang: GesetzVorgang) -> GesetzVorgang:
+    # TODO(se-jaeger): refactor to reduce complexity
+    async def process_item(self: Self, vorgang: GesetzVorgang) -> GesetzVorgang:  # noqa: C901, PLR0912
+        """Summarize extracted text for each document in the Vorgang and cache the result."""
         if not isinstance(vorgang, GesetzVorgang):
             msg = f"Expected {GesetzVorgang.__name__} object but got {vorgang.__class__.__name__}."
             raise DropItem(msg)

@@ -28,17 +28,22 @@ logger = logging.getLogger(__name__)
 
 
 class BuildPaZuFaVorgang(CacheDirPipeline):
-    async def process_item(self: Self, vorgang: GesetzVorgang) -> PaZuFaVorgang:
+    """Pipeline that converts a GesetzVorgang into a PaZuFa Vorgang API model."""
+
+    # TODO(se-jaeger): refactor to reduce complexity
+    async def process_item(self: Self, vorgang: GesetzVorgang) -> PaZuFaVorgang:  # noqa: C901
+        """Build and return a PaZuFa Vorgang from a parsed GesetzVorgang."""
         if not isinstance(vorgang, GesetzVorgang):
             msg = f"Expected {GesetzVorgang.__name__} object but got {vorgang.__class__.__name__}."
             raise DropItem(msg)
 
         dok_containers = []
         for pardok in vorgang.dokumente:
-            pazufa = []
-            for url in pardok.all_urls:
-                if pazufa_dokument := build_pazufa_dokument(dokument=pardok, dokument_cache_dir=self.get_dokument_cache_dir(dokument=pardok, url=url), url=url):
-                    pazufa.append(pazufa_dokument)
+            pazufa = [
+                d
+                for url in pardok.all_urls
+                if (d := build_pazufa_dokument(dokument=pardok, dokument_cache_dir=self.get_dokument_cache_dir(dokument=pardok, url=url), url=url))
+            ]
 
             if len(pazufa) > 0:
                 dok_containers.append(DokumentContainer(pardok, pazufa))
@@ -107,11 +112,12 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
                 titel=dok_container.pardok.typ_l or UNSET,
                 zp_modifiziert=dok_container.pazufa[-1].zp_modifiziert,
                 gremium_federf=gremium_federf,
-                # link: str | Unset = UNSET
-                # trojanergefahr: int | Unset = UNSET
-                # schlagworte: list[str] | Unset = UNSET
-                # additional_links: list[str] | Unset = UNSET
-                # stellungnahmen: list[Dokument | str] | Unset = UNSET
+                # NOTE: Following should be revisited
+                link=UNSET,
+                trojanergefahr=UNSET,
+                schlagworte=UNSET,
+                additional_links=UNSET,
+                stellungnahmen=UNSET,
             )
             stationen.append(station)
 
@@ -134,12 +140,13 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
             api_id=uuid.uuid5(self.crawler.settings.get("SCRAPER_UUID"), vorgang.id),
             titel=stationen[0].dokumente[0].titel,
             wahlperiode=self.wahlperiode,
-            verfassungsaendernd=False,  # TODO: not set at the moment?
             typ=Vorgangstyp.GG_LAND_PARL,
             initiatoren=stationen[0].dokumente[0].autoren,
             stationen=stationen,
-            # kurztitel: str | Unset = UNSET
             ids=[VgIdent(id=vorgang.id, typ="vorgnr")],
             links=[f"https://pardok.parlament-berlin.de/portala/vorgang/{vorgang.id}"],
-            # lobbyregister: list[Lobbyregeintrag] | Unset = UNSET
+            # NOTE: Following should be revisited
+            verfassungsaendernd=False,  # TODO(se-jaeger): not set at the moment?
+            kurztitel=UNSET,
+            lobbyregister=UNSET,
         )

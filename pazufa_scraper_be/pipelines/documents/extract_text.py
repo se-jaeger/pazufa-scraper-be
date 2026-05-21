@@ -13,7 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 class ExtractTextFromPDF(CacheDirPipeline):
+    """Pipeline that extracts plain text from cached PDF documents using kreuzberg."""
+
     async def process_item(self: Self, vorgang: GesetzVorgang) -> GesetzVorgang:
+        """Extract text from cached PDFs for each document in the Vorgang."""
         if not isinstance(vorgang, GesetzVorgang):
             msg = f"Expected {GesetzVorgang.__name__} object but got {vorgang.__class__.__name__}."
             raise DropItem(msg)
@@ -42,7 +45,7 @@ class ExtractTextFromPDF(CacheDirPipeline):
                         # fmt: on
 
                         if len(text) == 0:
-                            # TODO: Use OCR as fallback
+                            # TODO(se-jaeger): Use OCR as fallback
                             msg = f"[{vorgang.id} - {dokument.id}]: No text extracted."
                             logger.warning(msg)
 

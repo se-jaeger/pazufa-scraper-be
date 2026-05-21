@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Annotated, Literal, get_args
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, HttpUrl, PrivateAttr, ValidationError
 
+# NOTE: imports are required for pydantic, moving into type check block not possible
 from pazufa_scraper_be.pardok.utils import CoercedStrList, GermanDate  # noqa: TC001
 
 if TYPE_CHECKING:
@@ -15,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 class DokArt(StrEnum):
+    """Document type identifier codes from the pardok XML feed."""
+
     PlPr = "PlPr"
     APr = "APr"
     GVBl = "GVBl"
@@ -22,12 +25,16 @@ class DokArt(StrEnum):
 
 
 class AusschussprotokollTyp(StrEnum):
+    """URL abbreviation codes for the three variants of Ausschussprotokoll documents."""
+
     Beschluss = "bp"
     Inhalt = "ip"
     Wort = "wp"
 
 
 class DokTyp(StrEnum):
+    """Document process type (DokTyp) values from the pardok XML feed."""
+
     APr = "APr"
     ABespr_Par_21_Abs_3_GO = "ABespr § 21 Abs. 3 GO"
     ABespr = "ABespr"
@@ -53,6 +60,8 @@ class DokTyp(StrEnum):
 
 
 class BaseGesetzDokument(BaseModel):
+    """Base Pydantic model shared by all document types in a Gesetz Vorgang."""
+
     model_config = ConfigDict(extra="forbid", revalidate_instances="always", populate_by_name=True)
     _vorgang: GesetzVorgang | None = PrivateAttr(default=None)
 
@@ -75,8 +84,13 @@ class BaseGesetzDokument(BaseModel):
     lok_url: HttpUrl = Field(alias="LokURL")
     additional_urls: Annotated[list[HttpUrl] | None, BeforeValidator(lambda v: None if v == [] else [v] if isinstance(v, str) else v)] = Field(default=None)
 
+    def set_vorgang(self, vorgang: GesetzVorgang) -> None:
+        """Attach this document to its parent Vorgang."""
+        self._vorgang = vorgang
+
     @property
     def vorgang(self) -> GesetzVorgang:
+        """Return the parent Vorgang, raising RuntimeError if the document is standalone."""
         if self._vorgang is None:
             msg = "Dokument is standalone and is not attached to a Vorgang."
             raise RuntimeError(msg)
@@ -85,14 +99,19 @@ class BaseGesetzDokument(BaseModel):
 
     @property
     def all_urls(self) -> list[HttpUrl]:
+        """Return all document URLs: primary URL followed by any additional URLs."""
         return ([self.lok_url] if self.lok_url else []) + (self.additional_urls or [])
 
 
 class Protokoll(BaseGesetzDokument):
+    """Base model for protocol documents (Plenarprotokoll, Ausschussprotokoll)."""
+
     dat: GermanDate | None = Field(default=None, alias="DokDat")
 
 
 class PlPrDokument(Protokoll):
+    """Plenarprotokoll (PlPr) document."""
+
     art: Literal["PlPr"] = Field(alias="DokArt")
 
     sb: str | None = Field(default=None, alias="Sb")
@@ -100,18 +119,24 @@ class PlPrDokument(Protokoll):
 
 
 class APrDokument(Protokoll):
+    """Ausschussprotokoll (APr) document."""
+
     art: Literal["APr"] = Field(alias="DokArt")
 
     urheber: CoercedStrList = Field(default_factory=list, alias="Urheber")
 
 
 class DeskTitelSbMixin:
+    """Mixin providing desk, titel, and sb fields for documents."""
+
     desk: str | None = Field(default=None, alias="Desk")
     titel: str | None = Field(default=None, alias="Titel")
     sb: str | None = Field(default=None, alias="Sb")
 
 
 class GVBlDokument(BaseGesetzDokument, DeskTitelSbMixin):
+    """Gesetz- und Verordnungsblatt (GVBl) document."""
+
     art: Literal["GVBl"] = Field(alias="DokArt")
 
     vk_dat: GermanDate = Field(alias="VkDat")
@@ -121,20 +146,18 @@ class GVBlDokument(BaseGesetzDokument, DeskTitelSbMixin):
 
 
 class DrsDokument(BaseGesetzDokument, DeskTitelSbMixin):
+    """Drucksache (Drs) document."""
+
     art: Literal["Drs"] = Field(alias="DokArt")
 
     urheber: CoercedStrList = Field(default_factory=list, alias="Urheber")
-
-
-class Nebeneintrag(BaseModel):
-    reih_nr: int = Field(alias="ReihNr", gt=0)
-    desk: str = Field(alias="Desk")
 
 
 AnyGesetzDokument = PlPrDokument | GVBlDokument | APrDokument | DrsDokument
 
 
 def parse_dokument(data: dict | AnyGesetzDokument) -> AnyGesetzDokument | None:
+    """Parse a raw dict or existing model into the appropriate AnyGesetzDokument subtype."""
     if isinstance(data, get_args(AnyGesetzDokument)):
         return data
 

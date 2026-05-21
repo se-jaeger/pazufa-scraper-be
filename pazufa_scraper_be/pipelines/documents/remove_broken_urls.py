@@ -13,9 +13,13 @@ logger = logging.getLogger(__name__)
 
 
 class RemoveBrokenUrl(BasePipeline):
-    def init(self) -> None: ...
+    """Pipeline that removes documents whose primary URL returns a non-200 response."""
+
+    def init(self) -> None:
+        """No-op initializer; no extra setup required for this pipeline."""
 
     async def process_item(self: Self, vorgang: GesetzVorgang) -> GesetzVorgang:
+        """Remove documents with unreachable primary URLs from the Vorgang."""
         if not isinstance(vorgang, GesetzVorgang):
             msg = f"Expected {GesetzVorgang.__name__} object but got {vorgang.__class__.__name__}."
             raise DropItem(msg)

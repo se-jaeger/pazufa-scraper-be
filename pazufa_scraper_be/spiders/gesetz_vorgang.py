@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
+from typing import ClassVar
 
 import scrapy
 import scrapy.core.scheduler
@@ -15,13 +16,15 @@ class GesetzVorgangSpider(scrapy.Spider):
     """A Scrapy spider for scraping process ('Vorgang') documents from the Berlin Parliament."""
 
     name = "gesetz-vorgang"
-    allowed_domains = ["parlament-berlin.de"]
+    allowed_domains: ClassVar[list[str]] = ["parlament-berlin.de"]
     start_url_template = "https://www.parlament-berlin.de/opendata/pardok-wp{}.xml"
 
     async def start(self) -> AsyncGenerator:
+        """Yield the initial request for the pardok XML feed."""
         yield Request(url=self.start_url_template.format(self.crawler.settings.getint("WAHLPERIODE")))
 
     def parse(self, response: Response) -> Generator[dict | GesetzVorgang]:
+        """Parse the XML feed response into GesetzVorgang items or error dicts."""
         if not isinstance(response, XmlResponse):
             msg = f"Expecting {XmlResponse} but got {type(response)}."
             raise TypeError(msg)

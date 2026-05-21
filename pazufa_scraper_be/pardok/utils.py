@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Callable
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Annotated, Any
 
 from pydantic import BaseModel, BeforeValidator, ValidationError
@@ -9,17 +9,21 @@ logger = logging.getLogger(__name__)
 
 
 def parse_german_date(date_or_str: date | str) -> date:
+    """Parse a German-format date string (DD.MM.YYYY) or pass through an existing date."""
     if isinstance(date_or_str, date):
         return date_or_str
 
-    return datetime.strptime(date_or_str, "%d.%m.%Y").date()
+    return datetime.strptime(date_or_str, "%d.%m.%Y").replace(tzinfo=UTC).date()
 
 
-def ensure_list(value: Any | list) -> list:
+def ensure_list(value: object) -> list:
+    """Wrap value in a list if it is not already a list."""
     return value if isinstance(value, list) else [value]
 
 
 def ignore_invalid_factory(cls: type[BaseModel]) -> Callable[..., list]:
+    """Return a function that validates items against cls, dropping invalid ones."""
+
     def return_function(items: list[Any]) -> list[type[BaseModel]]:
         result = []
         for item in items:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Annotated, Any
+from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
@@ -12,11 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 class Nebeneintrag(BaseModel):
+    """Secondary entry contains keywords about the Vorgang."""
+
     reih_nr: int = Field(alias="ReihNr", gt=0)
     desk: str = Field(alias="Desk")
 
 
 class GesetzVorgang(BaseModel):
+    """Root model representing a legislative process ('Vorgang') of type 'Gesetz'."""
+
     model_config = ConfigDict(extra="forbid", revalidate_instances="always", populate_by_name=True)
 
     typ: str = Field(alias="VTyp")
@@ -41,6 +45,7 @@ class GesetzVorgang(BaseModel):
         BeforeValidator(ensure_list),
     ] = Field(alias="Dokument", default_factory=list)
 
-    def model_post_init(self, _context: Any) -> None:
+    def model_post_init(self, _context: object) -> None:
+        """Set each child document's back-reference to this Vorgang after validation."""
         for dokument in self.dokumente:
-            dokument._vorgang = self
+            dokument.set_vorgang(self)

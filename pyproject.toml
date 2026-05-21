@@ -38,11 +38,11 @@ ignore = [
   "FIX",  # Temporary developer notes should not break actions
   "COM812",  # For compatibility with ruff-format
   "ISC001",  # For compatibility with ruff-format
+  "ISC003",  # Do not implicitly concatenate strings
   "S311",  # We do not require cryptographically-sound randomness
   "D100",  # Do not document public modules
   "D104",  # Do not document public packages
   "TD003",  # Allow TODOs without links
-  "ISC003",  # Do not implicietly concatenate strings
   "S101",  # Allow testing methods
 ]
 

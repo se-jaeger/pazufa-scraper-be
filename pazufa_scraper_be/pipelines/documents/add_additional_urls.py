@@ -15,14 +15,19 @@ logger = logging.getLogger(__name__)
 
 
 class AddAdditionalUrls:
+    """Pipeline that resolves and appends additional document URLs for Ausschussprotokolle."""
+
     @classmethod
     def from_crawler(cls, crawler: Crawler) -> Self:
+        """Instantiate from a Scrapy Crawler."""
         return cls(crawler=crawler)
 
     def __init__(self: Self, crawler: Crawler) -> None:
+        """Initialize with a Scrapy Crawler instance."""
         self.crawler = crawler
 
     async def process_item(self: Self, vorgang: GesetzVorgang) -> GesetzVorgang:
+        """Check for additional Ausschussprotokoll URLs and append them to each document."""
         if not isinstance(vorgang, GesetzVorgang):
             msg = f"Expected {GesetzVorgang.__name__} object but got {vorgang.__class__.__name__}."
             raise DropItem(msg)

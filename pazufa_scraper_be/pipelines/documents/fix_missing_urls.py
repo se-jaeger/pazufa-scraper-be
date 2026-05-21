@@ -16,9 +16,13 @@ logger = logging.getLogger(__name__)
 
 
 class FixMissingDokUrl(BasePipeline):
-    def init(self) -> None: ...
+    """Pipeline that repairs missing or incomplete document URLs for PlPr documents."""
+
+    def init(self) -> None:
+        """No-op initializer; no extra setup required for this pipeline."""
 
     async def process_item(self: Self, vorgang: GesetzVorgang) -> GesetzVorgang:
+        """Probe and set the correct document URL for PlPr documents with missing URLs."""
         if not isinstance(vorgang, GesetzVorgang):
             msg = f"Expected {GesetzVorgang.__name__} object but got {vorgang.__class__.__name__}."
             raise DropItem(msg)
@@ -34,6 +38,6 @@ class FixMissingDokUrl(BasePipeline):
                         dokument.lok_url = HttpUrl(url)
                         break
 
-            # TODO: Similarly could work for Ausschussprotokolle but those are trickier due to their URL containing abbreviation of Ausschussname
+            # TODO(se-jaeger): Similarly could work for Ausschussprotokolle but those are trickier due to their URL containing abbreviation of Ausschussname
 
         return vorgang

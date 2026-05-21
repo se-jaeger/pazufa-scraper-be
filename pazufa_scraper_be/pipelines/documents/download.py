@@ -17,7 +17,10 @@ logger = logging.getLogger(__name__)
 
 
 class DownloadAndCacheDocuments(CacheDirPipeline):
+    """Pipeline that downloads and caches PDF documents for each Vorgang."""
+
     async def process_item(self: Self, vorgang: GesetzVorgang) -> GesetzVorgang:
+        """Download and cache all document PDFs for the given Vorgang."""
         if not isinstance(vorgang, GesetzVorgang):
             msg = f"Expected {GesetzVorgang.__name__} object but got {vorgang.__class__.__name__}."
             raise DropItem(msg)
@@ -60,7 +63,9 @@ class DownloadAndCacheDocuments(CacheDirPipeline):
                         continue
 
                     if last_modified_header_as_byte := response.headers.get("Last-Modified"):
-                        last_modified_as_iso = datetime.strptime(last_modified_header_as_byte.decode("utf-8"), "%a, %d %b %Y %H:%M:%S %Z").isoformat()
+                        last_modified_as_iso = (
+                            datetime.strptime(last_modified_header_as_byte.decode("utf-8"), "%a, %d %b %Y %H:%M:%S %Z").replace(tzinfo=UTC).isoformat()
+                        )
                         dokument_last_modified_file.write_text(last_modified_as_iso)
 
                     dokument_file_byte_hash = hashlib.sha256(response.body).hexdigest()
@@ -70,16 +75,6 @@ class DownloadAndCacheDocuments(CacheDirPipeline):
                     dokument_download_time_file.write_text(download_time.isoformat())
                     dokument_file.write_bytes(response.body)
 
-                # NOTE: We can at least check check if the document was changed since we downloaded it
-                # TODO: I think, however, this case might be a bit more complex than just wipe dir and re-download.
-                # We should at least save the history.
-                else:
-                    # request = Request(url, method="HEAD", callback=NO_CALLBACK)
-                    # response = await self.crawler.engine.download_async(request)
-                    # if last_modified_header_as_byte := response.headers.get("Last-Modified"):
-                    #     last_modified_header = datetime.strptime(last_modified_header_as_byte.decode("utf-8"), "%a, %d %b %Y %H:%M:%S %Z").isoformat()
-                    #     download_tiem_cache = datetime.fromisoformat(dokument_download_time_file.read_text())
-
-                    pass
+                # TODO(anyone): https://codeberg.org/PaZuFa/pazufa-scraper-be/issues/30
 
         return vorgang

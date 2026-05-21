@@ -1,11 +1,13 @@
-# Scrapy settings for pazufa_scraper_be project
-#
-# For simplicity, this file contains only settings considered important or
-# commonly used. You can find more settings consulting the documentation:
-#
-#     https://docs.scrapy.org/en/latest/topics/settings.html
-#     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
-#     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
+"""Scrapy settings for pazufa_scraper_be project.
+
+For simplicity, this file contains only settings considered important or
+commonly used. You can find more settings consulting the documentation:
+
+    https://docs.scrapy.org/en/latest/topics/settings.html
+    https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
+    https://docs.scrapy.org/en/latest/topics/spider-middleware.html
+    https://docs.scrapy.org/en/latest/topics/autothrottle.html
+"""
 import os
 import uuid
 from pathlib import Path
@@ -52,7 +54,6 @@ USER_AGENT = "Parlamentszusammenfasser (PaZuFa) Berlin Scraper (+https://pazufa.
 ROBOTSTXT_OBEY = False  # NOTE: this is not nice
 
 # Concurrency and throttling settings
-# CONCURRENT_REQUESTS = 16
 CONCURRENT_REQUESTS_PER_DOMAIN = 1
 DOWNLOAD_DELAY = 1
 CONCURRENT_ITEMS = 1
@@ -75,19 +76,6 @@ ITEM_PIPELINES = {
     SubmitVorgang: 1000,
 }
 
-# Enable and configure the AutoThrottle extension (disabled by default)
-# See https://docs.scrapy.org/en/latest/topics/autothrottle.html
-# AUTOTHROTTLE_ENABLED = True
-# The initial download delay
-# AUTOTHROTTLE_START_DELAY = 5
-# The maximum download delay to be set in case of high latencies
-# AUTOTHROTTLE_MAX_DELAY = 60
-# The average number of requests Scrapy should be sending in parallel to
-# each remote server
-# AUTOTHROTTLE_TARGET_CONCURRENCY = 1.0
-# Enable showing throttling stats for every response received:
-# AUTOTHROTTLE_DEBUG = False
-
 # Enable and configure HTTP caching (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html#httpcache-middleware-settings
 HTTPCACHE_ENABLED = True
@@ -95,9 +83,6 @@ HTTPCACHE_EXPIRATION_SECS = 7 * 60 * 60 * 24
 HTTPCACHE_DIR = "httpcache"
 HTTPCACHE_IGNORE_HTTP_CODES = []
 HTTPCACHE_STORAGE = "scrapy.extensions.httpcache.FilesystemCacheStorage"
-
-# HTTPCACHE_IGNORE_HTTP_CODES = []
-# HTTPCACHE_ALWAYS_STORE = True
 
 # Set settings whose default value is deprecated to a future-proof value
 FEED_EXPORT_ENCODING = "utf-8"
