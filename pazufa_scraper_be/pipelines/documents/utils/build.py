@@ -169,6 +169,17 @@ def get_station_gremium(dok_container: DokumentContainer) -> tuple[Gremium, bool
     return gremium, gremium_federf
 
 
+def get_station_zeitpunkte(dok_container: DokumentContainer) -> tuple[datetime, datetime]:
+    """Extract timestamps relevant for station."""
+    zp_start = dok_container.pazufa[0].zp_referenz
+    zp_modifiziert = dok_container.pazufa[-1].zp_modifiziert
+
+    if isinstance(dok_container.pardok, GVBlDokument):
+        zp_start = dok_container.pardok.vk_dat
+
+    return zp_start, zp_modifiziert
+
+
 def get_station_typ(dok_container: DokumentContainer) -> Stationstyp:
     """Map a DokumentContainer to the corresponding PaZuFa Stationstyp."""
     if isinstance(dok_container.pardok, DrsDokument) and dok_container.pazufa[0].typ == Doktyp.ENTWURF:
@@ -188,6 +199,29 @@ def get_station_typ(dok_container: DokumentContainer) -> Stationstyp:
     return Stationstyp.SONSTIG
 
 
+def get_dokument_zeitpunkte(dokument: BaseGesetzDokument, dokument_cache_dir: Path) -> tuple[Unset | datetime, datetime, datetime]:
+    """Extract timestamps relevant for document."""
+    last_modified_file = dokument_cache_dir / LAST_MODIFIED_FILE_NAME
+
+    # TODO(anyone): revisit this
+    zp_erstellt = UNSET
+
+    if dokument.dat is not None:
+        zp_referenz = dokument.dat
+    else:
+        msg = f"[{dokument.vorgang.id} - {dokument.id}]: Using fallback for document timestamp."
+        logger.warning(msg)
+        zp_referenz = datetime.now(tz=UTC)
+
+    if last_modified_file.exists():
+        dt = datetime.fromisoformat(last_modified_file.read_text())
+        zp_modifiziert = datetime(dt.year, dt.month, dt.day, tzinfo=UTC)
+    else:
+        zp_modifiziert = dokument.dat
+
+    return zp_erstellt, zp_referenz, zp_modifiziert
+
+
 def build_pazufa_dokument(dokument: BaseGesetzDokument, dokument_cache_dir: Path | None, url: HttpUrl) -> PaZuFaDokument | None:
     """Build a PaZuFaDokument from a cached document, returning None if required files are missing."""
     if dokument_cache_dir is None:
@@ -195,7 +229,6 @@ def build_pazufa_dokument(dokument: BaseGesetzDokument, dokument_cache_dir: Path
 
     text_file = dokument_cache_dir / TEXT_FILE_NAME
     summary_file = dokument_cache_dir / SUMMARY_FILE_NAME
-    last_modified_file = dokument_cache_dir / LAST_MODIFIED_FILE_NAME
     file_byte_hash_file = dokument_cache_dir / FILE_BYTE_HASH_FILE_NAME
 
     if text_file.exists():
@@ -222,22 +255,15 @@ def build_pazufa_dokument(dokument: BaseGesetzDokument, dokument_cache_dir: Path
         logger.warning(msg)
         return None
 
-    # TODO(se-jaeger): check if this can be handled by pardok model
-    date = datetime(dokument.dat.year, dokument.dat.month, dokument.dat.day, tzinfo=UTC) if dokument.dat is not None else datetime.now(tz=UTC)
-
-    if last_modified_file.exists():
-        dt = datetime.fromisoformat(last_modified_file.read_text())
-        modified_date = datetime(dt.year, dt.month, dt.day, tzinfo=UTC)
-
-    else:
-        modified_date = date
+    zp_erstellt, zp_referenz, zp_modifiziert = get_dokument_zeitpunkte(dokument, dokument_cache_dir)
 
     return PaZuFaDokument(
         typ=get_dokument_typ(dokument),
         titel=get_dokument_titel(dokument, dokument_cache_dir),
         volltext=volltext,
-        zp_referenz=date,
-        zp_modifiziert=modified_date,
+        zp_erstellt=zp_erstellt,
+        zp_referenz=zp_referenz,
+        zp_modifiziert=zp_modifiziert,
         link=str(url),
         hash_=hash_,
         autoren=get_dokument_autoren(dokument),
@@ -246,7 +272,6 @@ def build_pazufa_dokument(dokument: BaseGesetzDokument, dokument_cache_dir: Path
         # NOTE: Following should be revisited
         kurztitel=UNSET,
         vorwort=UNSET,
-        zp_erstellt=UNSET,
         meinung=UNSET,
         schlagworte=UNSET,
     )

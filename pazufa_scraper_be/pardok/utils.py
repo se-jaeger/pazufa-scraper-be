@@ -13,7 +13,8 @@ def parse_german_date(date_or_str: date | str) -> date:
     if isinstance(date_or_str, date):
         return date_or_str
 
-    return datetime.strptime(date_or_str, "%d.%m.%Y").replace(tzinfo=UTC).date()
+    date_ = datetime.strptime(date_or_str, "%d.%m.%Y").replace(tzinfo=UTC).date()
+    return datetime(date_.year, date_.month, date_.day, tzinfo=UTC)
 
 
 def ensure_list(value: object) -> list:
@@ -39,5 +40,5 @@ def ignore_invalid_factory(cls: type[BaseModel]) -> Callable[..., list]:
     return return_function
 
 
-GermanDate = Annotated[date, BeforeValidator(parse_german_date)]
+GermanDate = Annotated[datetime, BeforeValidator(parse_german_date)]
 CoercedStrList = Annotated[list[str], BeforeValidator(ensure_list)]

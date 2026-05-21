@@ -22,6 +22,8 @@ from pazufa_scraper_be.pipelines.documents.utils.build import (
     build_pazufa_dokument,
     get_station_gremium,
     get_station_typ,
+    get_station_typ_and_gremium,
+    get_station_zeitpunkte,
 )
 
 logger = logging.getLogger(__name__)
@@ -104,13 +106,16 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
         stationen = []
         for dok_container in dok_containers:
             gremium, gremium_federf = get_station_gremium(dok_container)
+            station_typ, (gremium, gremium_federf) = get_station_typ_and_gremium(dok_container)
+            zp_start, zp_modifiziert = get_station_zeitpunkte(dok_container)
+
             station = Station(
-                zp_start=dok_container.pazufa[0].zp_referenz,
+                zp_start=zp_start,
+                zp_modifiziert=zp_modifiziert,
                 gremium=gremium,
                 typ=get_station_typ(dok_container),
                 dokumente=cast("list[Dokument | str]", dok_container.pazufa),
                 titel=dok_container.pardok.typ_l or UNSET,
-                zp_modifiziert=dok_container.pazufa[-1].zp_modifiziert,
                 gremium_federf=gremium_federf,
                 # NOTE: Following should be revisited
                 link=UNSET,
