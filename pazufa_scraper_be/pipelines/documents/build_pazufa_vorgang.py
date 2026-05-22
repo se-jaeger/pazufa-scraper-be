@@ -20,8 +20,6 @@ from pazufa_scraper_be.pipelines.documents.utils.build import (
     ForwardMergeRule,
     apply_rules,
     build_pazufa_dokument,
-    get_station_gremium,
-    get_station_typ,
     get_station_typ_and_gremium,
     get_station_zeitpunkte,
 )
@@ -105,7 +103,6 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
 
         stationen = []
         for dok_container in dok_containers:
-            gremium, gremium_federf = get_station_gremium(dok_container)
             station_typ, (gremium, gremium_federf) = get_station_typ_and_gremium(dok_container)
             zp_start, zp_modifiziert = get_station_zeitpunkte(dok_container)
 
@@ -113,7 +110,7 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
                 zp_start=zp_start,
                 zp_modifiziert=zp_modifiziert,
                 gremium=gremium,
-                typ=get_station_typ(dok_container),
+                typ=station_typ,
                 dokumente=cast("list[Dokument | str]", dok_container.pazufa),
                 titel=dok_container.pardok.typ_l or UNSET,
                 gremium_federf=gremium_federf,

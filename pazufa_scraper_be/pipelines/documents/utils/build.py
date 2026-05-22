@@ -126,17 +126,24 @@ def get_dokument_autoren(dokument: BaseGesetzDokument) -> list[Autor]:
     return autoren
 
 
-def get_station_gremium(dok_container: DokumentContainer) -> tuple[Gremium, bool | Unset]:
-    """Determine the Gremium and whether it is federführend for a DokumentContainer."""
-    if isinstance(dok_container.pardok, DrsDokument):
-        gremium_name = (
-            f"{', '.join(dok_container.pardok.urheber[:-1])}{f' und {dok_container.pardok.urheber[-1]}' if len(dok_container.pardok.urheber) > 1 else ''}"
-        )
-        gremium_federf = UNSET
+def get_station_typ_and_gremium(dok_container: DokumentContainer) -> tuple[Stationstyp, tuple[Gremium, bool | Unset]]:
+    """Extract Stationstyp, Gremium and whether it was 'federführend'."""
+    typ = Stationstyp.SONSTIG
+    gremium_name = ""
+    gremium_federf = UNSET
 
-    # NOTE: It should always be a single value with Ausschuss name, so we take the first that fit
+    if isinstance(dok_container.pardok, DrsDokument) and dok_container.pazufa[0].typ == Doktyp.ENTWURF:
+        typ = Stationstyp.PARL_INITIATIV
+        gremium_name = "Plenum"
+
+    if isinstance(dok_container.pardok, PlPrDokument):
+        typ = Stationstyp.PARL_VOLLVLSGN
+        gremium_name = "Plenum"
+
     if isinstance(dok_container.pardok, APrDokument):
-        gremium_name = ""
+        typ = Stationstyp.PARL_AUSSCHBER
+
+        # NOTE: It should always be a single value with Ausschuss name, so we take the first that fit
         for x in dok_container.pardok.urheber:
             if bool(re.search("ausschuss", x, flags=re.IGNORECASE)):
                 gremium_name = x
@@ -150,11 +157,8 @@ def get_station_gremium(dok_container: DokumentContainer) -> tuple[Gremium, bool
             gremium_name = gremium_name.strip()
             gremium_federf = False
 
-    elif isinstance(dok_container.pardok, PlPrDokument):
-        gremium_name = "Plenum"
-        gremium_federf = UNSET
-
-    elif isinstance(dok_container.pardok, GVBlDokument):
+    if isinstance(dok_container.pardok, GVBlDokument):
+        typ = Stationstyp.POSTPARL_GSBLT
         gremium_name = "Gesetzesblatt"
         gremium_federf = UNSET
 
@@ -166,7 +170,11 @@ def get_station_gremium(dok_container: DokumentContainer) -> tuple[Gremium, bool
         link=UNSET,
     )
 
-    return gremium, gremium_federf
+    if typ == Stationstyp.SONSTIG:
+        msg = f"[{dok_container.pardok.vorgang.id} - {dok_container.pardok.id}]: Using fallback for Stationstyp."
+        logger.info(msg)
+
+    return typ, (gremium, gremium_federf)
 
 
 def get_station_zeitpunkte(dok_container: DokumentContainer) -> tuple[datetime, datetime]:
@@ -178,25 +186,6 @@ def get_station_zeitpunkte(dok_container: DokumentContainer) -> tuple[datetime, 
         zp_start = dok_container.pardok.vk_dat
 
     return zp_start, zp_modifiziert
-
-
-def get_station_typ(dok_container: DokumentContainer) -> Stationstyp:
-    """Map a DokumentContainer to the corresponding PaZuFa Stationstyp."""
-    if isinstance(dok_container.pardok, DrsDokument) and dok_container.pazufa[0].typ == Doktyp.ENTWURF:
-        return Stationstyp.PARL_INITIATIV
-
-    if isinstance(dok_container.pardok, PlPrDokument):
-        return Stationstyp.PARL_VOLLVLSGN
-
-    if isinstance(dok_container.pardok, APrDokument):
-        return Stationstyp.PARL_AUSSCHBER
-
-    if isinstance(dok_container.pardok, GVBlDokument):
-        return Stationstyp.POSTPARL_GSBLT
-
-    msg = f"[{dok_container.pardok.vorgang.id} - {dok_container.pardok.id}]: Using fallback for Stationstyp."
-    logger.info(msg)
-    return Stationstyp.SONSTIG
 
 
 def get_dokument_zeitpunkte(dokument: BaseGesetzDokument, dokument_cache_dir: Path) -> tuple[Unset | datetime, datetime, datetime]:
