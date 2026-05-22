@@ -102,6 +102,11 @@ class BaseGesetzDokument(BaseModel):
         """Return all document URLs: primary URL followed by any additional URLs."""
         return ([self.lok_url] if self.lok_url else []) + (self.additional_urls or [])
 
+    def model_post_init(self, _context: object) -> None:
+        """Set Urheber for Vorlage zur Beschlussfassung Drucksachen."""
+        if isinstance(self, DrsDokument) and self.typ in [DokTyp.VorlBeschl_GesEntw, DokTyp.VorlBeschl_GesEntwErg]:
+            self.urheber = ["Landesregierung"]
+
 
 class Protokoll(BaseGesetzDokument):
     """Base model for protocol documents (Plenarprotokoll, Ausschussprotokoll)."""

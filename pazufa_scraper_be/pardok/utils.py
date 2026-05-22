@@ -8,12 +8,21 @@ from pydantic import BaseModel, BeforeValidator, ValidationError
 logger = logging.getLogger(__name__)
 
 
-def parse_german_date(date_or_str: date | str) -> date:
-    """Parse a German-format date string (DD.MM.YYYY) or pass through an existing date."""
-    if isinstance(date_or_str, date):
+def parse_german_date(date_or_str: date | datetime | str) -> datetime:
+    """Parse a German-format date string (DD.MM.YYYY) or pass through an existing timestamp."""
+    if isinstance(date_or_str, datetime):
         return date_or_str
 
-    date_ = datetime.strptime(date_or_str, "%d.%m.%Y").replace(tzinfo=UTC).date()
+    if isinstance(date_or_str, date):
+        date_ = date_or_str
+
+    elif isinstance(date_or_str, str):
+        date_ = datetime.strptime(date_or_str, "%d.%m.%Y").replace(tzinfo=UTC).date()
+
+    else:
+        msg = f"Can not parse given type: {type(date_or_str)}"
+        raise TypeError(msg)
+
     return datetime(date_.year, date_.month, date_.day, tzinfo=UTC)
 
 

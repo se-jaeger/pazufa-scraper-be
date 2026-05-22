@@ -1,6 +1,6 @@
+from .build_vorgang.build_vorgang import BuildPaZuFaVorgang
 from .documents import (
     AddAdditionalUrls,
-    BuildPaZuFaVorgang,
     DownloadAndCacheDocuments,
     ExtractTextFromPDF,
     FixMissingDokUrl,

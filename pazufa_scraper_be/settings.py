@@ -8,6 +8,7 @@ commonly used. You can find more settings consulting the documentation:
     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
     https://docs.scrapy.org/en/latest/topics/autothrottle.html
 """
+
 import os
 import uuid
 from pathlib import Path
@@ -33,7 +34,7 @@ WAHLPERIODE = 19
 CACHE_DIR = Path(".cache")
 ERRORS_DIR = Path(".errors")
 
-API_BASE_URL = os.environ.get("PAZUFA_API_BASE_URL", "http://localhost:8080")
+API_URL = os.environ.get("PAZUFA_API_URL", "http://localhost:8080")
 API_TOKEN = os.environ.get("PAZUFA_API_TOKEN")
 
 LLM_TOKEN = os.environ.get("PAZUFA_LLM_TOKEN")

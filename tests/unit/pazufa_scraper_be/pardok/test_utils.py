@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 from pydantic import BaseModel
@@ -9,9 +9,9 @@ from pazufa_scraper_be.pardok.utils import ensure_list, ignore_invalid_factory, 
 @pytest.mark.parametrize(
     ("input_val", "expected"),
     [
-        ("01.01.2020", date(2020, 1, 1)),
-        ("31.12.2023", date(2023, 12, 31)),
-        (date(2024, 5, 10), date(2024, 5, 10)),
+        ("01.01.2020", datetime(2020, 1, 1, tzinfo=UTC)),
+        ("31.12.2023", datetime(2023, 12, 31, tzinfo=UTC)),
+        (date(2024, 5, 10), datetime(2024, 5, 10, tzinfo=UTC)),
     ],
 )
 def test_parse_german_date_success(input_val: str | date, expected: date) -> None:

@@ -76,7 +76,7 @@ class ApiPipeline(BasePipeline):
     def init(self: Self) -> None:
         super().init()
 
-        self._api_base_url = self.crawler.settings.get("API_BASE_URL", None)
+        self._api_url = self.crawler.settings.get("API_URL", None)
         self._api_token = self.crawler.settings.get("API_TOKEN", None)
         self._scraper_uuid = self.crawler.settings.get("SCRAPER_UUID", None)
 
@@ -85,8 +85,8 @@ class ApiPipeline(BasePipeline):
             raise ValueError(msg)
 
         if self._api_token is not None:
-            if self._api_base_url is None:
-                msg = "If API_TOKEN is set, API_BASE_URL setting is required."
+            if self._api_url is None:
+                msg = "If API_TOKEN is set, API_URL setting is required."
                 raise ValueError(msg)
 
         else:
@@ -97,7 +97,7 @@ class ApiPipeline(BasePipeline):
         if self._api_token is None:
             return None
 
-        client = AuthenticatedClient(base_url=self._api_base_url, token=self._api_token, prefix="", auth_header_name="X-API-Key")
+        client = AuthenticatedClient(base_url=self._api_url, token=self._api_token, prefix="", auth_header_name="X-API-Key")
         async with client:
             return await vorgang_put.asyncio_detailed(client=client, body=vorgang, x_scraper_id=str(self._scraper_uuid))
 

@@ -13,16 +13,9 @@ from scrapy.exceptions import DropItem
 
 from pazufa_scraper_be.pardok import APrDokument, DokTyp, DrsDokument, GesetzVorgang, GVBlDokument, PlPrDokument
 from pazufa_scraper_be.pipelines._base import CacheDirPipeline
-from pazufa_scraper_be.pipelines.documents.utils.build import (
-    BackwardMergeRule,
-    DokumentContainer,
-    DropRule,
-    ForwardMergeRule,
-    apply_rules,
-    build_pazufa_dokument,
-    get_station_typ_and_gremium,
-    get_station_zeitpunkte,
-)
+from pazufa_scraper_be.pipelines.build_vorgang import build_pazufa_dokument
+from pazufa_scraper_be.pipelines.build_vorgang.rules import BackwardMergeRule, DropRule, ForwardMergeRule, apply_rules
+from pazufa_scraper_be.pipelines.build_vorgang.utils import DokumentContainer, get_station_typ_and_gremium, get_station_zeitpunkte
 
 logger = logging.getLogger(__name__)
 
@@ -126,15 +119,21 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
             if station.typ == Stationstyp.PARL_VOLLVLSGN and dok_container.pardok.abstract is not None:
                 if bool(re.search("^angenommen|^zustimmung", dok_container.pardok.abstract, flags=re.IGNORECASE)):
                     typ = Stationstyp.PARL_AKZEPTANZ
+                    titel = "Angenommen"
 
                 elif bool(re.search("^abgelehnt", dok_container.pardok.abstract, flags=re.IGNORECASE)):
                     typ = Stationstyp.PARL_ABLEHNUNG
+                    titel = "Abgelehnt"
+
+                elif bool(re.search("^zurückgezogen", dok_container.pardok.abstract, flags=re.IGNORECASE)):
+                    typ = Stationstyp.PARL_ZURUECKGZ
+                    titel = "Zurückgezogen"
 
                 else:
                     typ = None
 
                 if typ:
-                    new_station = Station.from_dict(station.to_dict() | {"typ": typ, "titel": "TODO: split station titel"})
+                    new_station = Station.from_dict(station.to_dict() | {"typ": typ, "titel": titel})
                     new_station.zp_start = station.zp_start + timedelta(hours=1)
                     stationen.append(new_station)
 
