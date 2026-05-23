@@ -66,6 +66,26 @@ pytest
 pytest tests/unit
 ```
 
+To get the test coverage run
+
+```bash
+pytest --cov
+```
+
+or
+
+```bash
+pytest --cov --cov-report=html
+```
+
+to create a `htmlcov/` directory with the results. Run
+
+```bash
+open htmlcov/index.html
+```
+
+for an interactive overview.
+
 Note: Below is yet to be implemented.
 
 To run integration tests use

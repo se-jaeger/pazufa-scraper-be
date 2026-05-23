@@ -19,6 +19,7 @@ dev = [
   "jupyterlab-vim>=4.1.4",
   "prek>=0.4.0",
   "pytest>=9.0.3",
+  "pytest-cov>=7.1.0",
   "ruff>=0.15.12",
   "ty>=0.0.32",
   "types-lxml>=2026.2.16",
@@ -50,6 +51,14 @@ ignore = [
 "**/__init__.py" = [
   "F401",  # Unused imports in __init__ files can make sense
 ]
+
+[tool.coverage.run]
+source = ["pazufa_scraper_be"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
