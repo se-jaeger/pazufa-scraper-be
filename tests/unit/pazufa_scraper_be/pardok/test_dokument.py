@@ -2,7 +2,16 @@ from typing import Any
 
 import pytest
 
-from pazufa_scraper_be.pardok.dokument import AnyGesetzDokument, APrDokument, DrsDokument, GVBlDokument, PlPrDokument, parse_dokument
+from pazufa_scraper_be.pardok.dokument import (
+    AnyGesetzDokument,
+    APrDokument,
+    BaseGesetzDokument,
+    DokTyp,
+    DrsDokument,
+    GVBlDokument,
+    PlPrDokument,
+    parse_dokument,
+)
 
 
 @pytest.fixture
@@ -139,14 +148,53 @@ def test_all_urls(plpr_data: dict[str, Any]) -> None:
     assert [str(url) for url in doc.all_urls] == expected
 
 
-def test_all_urls_no_additional(plpr_data: dict[str, Any]) -> None:
-    """all_urls returns only the primary URL when no additional URLs are set."""
-    doc = PlPrDokument.model_validate(plpr_data)
-    assert [str(url) for url in doc.all_urls] == ["https://example.com/doc123"]
+def test_all_urls_with_additional_variants(base_dok_data: dict[str, Any]) -> None:
+    """Test different input types for additional_urls validator."""
+    # Case 1: empty list should be converted to None
+    data_empty = base_dok_data.copy()
+    data_empty["additional_urls"] = []
+    doc_empty = BaseGesetzDokument.model_validate(data_empty)
+    assert doc_empty.additional_urls is None
+
+    # Case 2: string should be converted to list of one string
+    data_str = base_dok_data.copy()
+    data_str["additional_urls"] = "https://extra.com"
+    doc_str = BaseGesetzDokument.model_validate(data_str)
+    assert isinstance(doc_str.additional_urls, list)
+    assert [str(url).rstrip("/") for url in doc_str.additional_urls] == ["https://extra.com"]
+
+    # Case 3: list should remain list
+    data_list = base_dok_data.copy()
+    data_list["additional_urls"] = ["https://extra1.com", "https://extra2.com"]
+    doc_list = BaseGesetzDokument.model_validate(data_list)
+    assert isinstance(doc_list.additional_urls, list)
+    assert [str(url).rstrip("/") for url in doc_list.additional_urls] == ["https://extra1.com", "https://extra2.com"]
 
 
-def test_vorgang_runtime_error(plpr_data: dict[str, Any]) -> None:
+def test_vorgang_runtime_error(base_dok_data: dict[str, Any]) -> None:
     """Accessing vorgang on a standalone document raises RuntimeError."""
-    doc = PlPrDokument.model_validate(plpr_data)
+    doc = BaseGesetzDokument.model_validate(base_dok_data)
     with pytest.raises(RuntimeError, match="Dokument is standalone"):
         _ = doc.vorgang
+
+
+def test_drs_dokument_post_init_urheber(drs_data: dict[str, Any]) -> None:
+    """DrsDokument should set Urheber to Landesregierung for specific DokTyps."""
+    # Case 1: VorlBeschl_GesEntw
+    data_1 = drs_data.copy()
+    data_1["DokTyp"] = DokTyp.VorlBeschl_GesEntw.value
+    doc_1 = DrsDokument.model_validate(data_1)
+    assert doc_1.urheber == ["Landesregierung"]
+
+    # Case 2: VorlBeschl_GesEntwErg
+    data_2 = drs_data.copy()
+    data_2["DokTyp"] = DokTyp.VorlBeschl_GesEntwErg.value
+    doc_2 = DrsDokument.model_validate(data_2)
+    assert doc_2.urheber == ["Landesregierung"]
+
+    # Case 3: Other type should keep original urheber
+    data_3 = drs_data.copy()
+    data_3["DokTyp"] = "Antr"
+    data_3["Urheber"] = ["Some Other"]
+    doc_3 = DrsDokument.model_validate(data_3)
+    assert doc_3.urheber == ["Some Other"]

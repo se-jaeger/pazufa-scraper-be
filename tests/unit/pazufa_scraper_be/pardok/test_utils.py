@@ -20,11 +20,13 @@ def test_parse_german_date_success(input_val: str | date, expected: date) -> Non
 
 
 def test_parse_german_date_failure() -> None:
-    """parse_german_date raises ValueError for invalid date strings."""
+    """parse_german_date raises ValueError for invalid date strings and TypeError for invalid types."""
     with pytest.raises(ValueError, match="does not match format"):
         parse_german_date("2020-01-01")
     with pytest.raises(ValueError, match="does not match format"):
         parse_german_date("invalid-date")
+    with pytest.raises(TypeError, match="Can not parse given type"):
+        parse_german_date(123)  # ty: ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(

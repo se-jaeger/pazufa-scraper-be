@@ -104,7 +104,10 @@ class BaseGesetzDokument(BaseModel):
 
     def model_post_init(self, _context: object) -> None:
         """Set Urheber for Vorlage zur Beschlussfassung Drucksachen."""
-        if isinstance(self, DrsDokument) and self.typ in [DokTyp.VorlBeschl_GesEntw, DokTyp.VorlBeschl_GesEntwErg]:
+        is_drucksache = isinstance(self, DrsDokument)
+        is_relevant_typ = self.typ in [DokTyp.VorlBeschl_GesEntw, DokTyp.VorlBeschl_GesEntwErg]
+
+        if is_drucksache and is_relevant_typ:
             self.urheber = ["Landesregierung"]
 
 
