@@ -9,6 +9,7 @@ dependencies = [
   "kreuzberg>=4.9.5",
   "pazufa-corelib>=0.1.0",
   "pydantic>=2.13.3",
+  "python-dateutil",  # missing in corelib
   "python-magic>=0.4.27",
   "scrapy>=2.15.1",
 ]

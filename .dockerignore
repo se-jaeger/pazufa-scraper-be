@@ -1,0 +1,32 @@
+# will be mounted
+.cache
+.errors
+
+# not get needed
+.git
+.jj
+
+# no caches
+.pytest_cache
+.ruff_cache
+.scrapy
+
+# will be generated
+.venv
+
+# no code coverage
+htmlcov
+.coverage
+
+# not necessary to run scrapy
+.DS_Store
+.pre-commit-config.yaml
+.woodpecker
+.python-version
+.zed
+.gitignore
+
+notebooks
+tests
+README.md
+LICENSE
