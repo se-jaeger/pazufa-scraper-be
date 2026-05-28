@@ -1,34 +1,34 @@
 when:
-  - event: [pull_request]
+  - event: pull_request
 
 labels:
   pazufa_scope: generic
 
-variables: # https://woodpecker-ci.org/docs/usage/advanced-usage#anchors--aliases
-  - &python_image 'ghcr.io/astral-sh/uv:python3.12-bookworm-slim'
+variables:
+  - &python_image 'ghcr.io/astral-sh/uv:python3.12-trixie-slim'
 
 steps:
-  - name: setup
+  setup:
     image: *python_image
     commands:
       - uv sync --frozen
 
-  - name: lint
+  lint:
     image: *python_image
     commands:
       - uv run ruff check .
 
-  - name: format
+  format:
     image: *python_image
     commands:
       - uv run ruff format --check .
 
-  - name: type-check
+  type-check:
     image: *python_image
     commands:
       - uv run ty check .
 
-  - name: test
+  test:
     image: *python_image
     commands:
       - uv run pytest
