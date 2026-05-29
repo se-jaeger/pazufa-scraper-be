@@ -12,15 +12,12 @@ variables:
         from_secret: docker-hub-pass
 
 when:
-  - event: [tag, push]
+  - event: tag
+  - event: [push, pull_request]
     branch: ${CI_REPO_DEFAULT_BRANCH}
-  - event: pull_request
 
 labels:
   pazufa_scope: generic
-
-depends_on:
-  - quality-control
 
 steps:
   check_tag:
@@ -29,7 +26,7 @@ steps:
       - event: tag
     commands:
       - TAG_VERSION="${CI_COMMIT_TAG#v}"
-      - PACKAGE_VERSION=$(uv version --short)")
+      - PACKAGE_VERSION=$(uv version --short)
       - |
         if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
           echo "ERROR: tag '$TAG_VERSION' does not match project version in pyproject.toml '$PACKAGE_VERSION'" >&2
@@ -45,6 +42,7 @@ steps:
     settings:
       repo: *scraper_image
       tags:
+        - latest
         - ${CI_COMMIT_TAG%%.*}
         - ${CI_COMMIT_TAG%.*}
         - ${CI_COMMIT_TAG}
@@ -58,7 +56,8 @@ steps:
     settings:
       repo: *scraper_image
       tags:
-        - ${CI_COMMIT_SHA}
+        - latest
+        - ${CI_COMMIT_SHA:0:7}
       platforms: *platforms
       logins: *logins
 

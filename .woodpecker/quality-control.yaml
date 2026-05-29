@@ -15,20 +15,28 @@ steps:
 
   lint:
     image: *python_image
+    depends_on:
+      - setup
     commands:
       - uv run ruff check .
 
   format:
     image: *python_image
+    depends_on:
+      - setup
     commands:
       - uv run ruff format --check .
 
   type-check:
     image: *python_image
+    depends_on:
+      - setup
     commands:
       - uv run ty check .
 
   test:
     image: *python_image
+    depends_on:
+      - setup
     commands:
       - uv run pytest
