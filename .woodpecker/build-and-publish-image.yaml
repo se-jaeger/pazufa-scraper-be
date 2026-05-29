@@ -69,4 +69,3 @@ steps:
       repo: *scraper_image
       platforms: *platforms
       dry_run: true
-
