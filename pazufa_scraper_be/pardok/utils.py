@@ -34,7 +34,7 @@ def ensure_list(value: object) -> list:
 def ignore_invalid_factory(cls: type[BaseModel]) -> Callable[..., list]:
     """Return a function that validates items against cls, dropping invalid ones."""
 
-    def return_function(items: list[Any]) -> list[type[BaseModel]]:
+    def return_function(items: list[Any]) -> list[BaseModel]:
         result = []
         for item in items:
             try:

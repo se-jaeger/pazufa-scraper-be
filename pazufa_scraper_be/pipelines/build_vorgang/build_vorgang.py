@@ -24,7 +24,7 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
     """Pipeline that converts a GesetzVorgang into a PaZuFa Vorgang API model."""
 
     # TODO(se-jaeger): refactor to reduce complexity
-    async def process_item(self: Self, vorgang: GesetzVorgang) -> PaZuFaVorgang:  # noqa: C901
+    async def process_item(self: Self, vorgang: GesetzVorgang) -> PaZuFaVorgang:  # noqa: C901, PLR0912
         """Build and return a PaZuFa Vorgang from a parsed GesetzVorgang."""
         if not isinstance(vorgang, GesetzVorgang):
             msg = f"Expected {GesetzVorgang.__name__} object but got {vorgang.__class__.__name__}."
@@ -94,7 +94,7 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
             msg = f"[{vorgang.id}]: Could not create any Stations."
             raise DropItem(msg)
 
-        stationen = []
+        stationen: list[Station] = []
         for dok_container in dok_containers:
             station_typ, (gremium, gremium_federf) = get_station_typ_and_gremium(dok_container)
             zp_start, zp_modifiziert = get_station_zeitpunkte(dok_container)
@@ -137,12 +137,21 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
                     new_station.zp_start = station.zp_start + timedelta(hours=1)
                     stationen.append(new_station)
 
+        dokument = stationen[0].dokumente[0]
+        if isinstance(dokument, Dokument):
+            titel = dokument.titel
+            initiatoren = dokument.autoren
+
+        else:
+            msg = f"[{vorgang.id}]: Could not create titel and autoren."
+            raise DropItem(msg)
+
         return Vorgang(
             api_id=uuid.uuid5(self.crawler.settings.get("SCRAPER_UUID"), vorgang.id),
-            titel=stationen[0].dokumente[0].titel,
+            titel=titel,
             wahlperiode=self.wahlperiode,
             typ=Vorgangstyp.GG_LAND_PARL,
-            initiatoren=stationen[0].dokumente[0].autoren,
+            initiatoren=initiatoren,
             stationen=stationen,
             ids=[VgIdent(id=vorgang.id, typ="vorgnr")],
             links=[f"https://pardok.parlament-berlin.de/portala/vorgang/{vorgang.id}"],

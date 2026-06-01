@@ -6,25 +6,31 @@ readme = "README.md"
 requires-python = ">=3.12"
 authors = [{ name = "Sebastian Jäger", email = "git@sebastian-jaeger.me" }]
 dependencies = [
-  "kreuzberg>=4.9.5",
-  "pazufa-corelib>=0.1.0",
-  "pydantic>=2.13.3",
-  "python-dateutil",  # missing in corelib
+  "kreuzberg>=4.9.7",
+  "pazufa-corelib>=0.1.1",
+  "pydantic>=2.13.4",
   "python-magic>=0.4.27",
-  "scrapy>=2.15.1",
+  "scrapy>=2.16.0",
 ]
 
 [dependency-groups]
 dev = [
-  "jupyterlab>=4.5.6",
+  "jupyterlab>=4.5.7",
   "jupyterlab-vim>=4.1.4",
-  "prek>=0.4.0",
+  "prek>=0.4.3",
   "pytest>=9.0.3",
   "pytest-cov>=7.1.0",
-  "ruff>=0.15.12",
-  "ty>=0.0.32",
+  "ruff>=0.15.15",
+  "ty>=0.0.40",
   "types-lxml>=2026.2.16",
 ]
+
+[tool.coverage.run]
+source = ["pazufa_scraper_be"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
 
 [tool.ruff]
 line-length = 160
@@ -52,14 +58,6 @@ ignore = [
 "**/__init__.py" = [
   "F401",  # Unused imports in __init__ files can make sense
 ]
-
-[tool.coverage.run]
-source = ["pazufa_scraper_be"]
-branch = true
-
-[tool.coverage.report]
-show_missing = true
-
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
