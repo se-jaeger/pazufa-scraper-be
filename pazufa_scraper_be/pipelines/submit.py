@@ -2,15 +2,17 @@ import logging
 from http import HTTPStatus
 from typing import Self
 
+from pazufa_corelib.api_client.api.vorgang import vorgang_put
 from pazufa_corelib.api_client.models.vorgang import Vorgang
 from scrapy.exceptions import DropItem
 
-from pazufa_scraper_be.pipelines._base import ApiPipeline
+from pazufa_scraper_be.pipelines._base import ApiPipeline, StatsPipeline
+from pazufa_scraper_be.pipelines.counter_names import VorgangCounter
 
 logger = logging.getLogger(__name__)
 
 
-class SubmitVorgang(ApiPipeline):
+class SubmitVorgang(ApiPipeline, StatsPipeline):
     """Pipeline that submits a built Vorgang to the PaZuFa API."""
 
     async def process_item(self: Self, vorgang: Vorgang) -> None:
@@ -19,13 +21,19 @@ class SubmitVorgang(ApiPipeline):
             msg = f"Expected {Vorgang.__name__} object but got {vorgang.__class__.__name__}."
             raise DropItem(msg)
 
-        response = await self.put_vorgang(vorgang)
-        if response is None:
-            return
+        if client := self.get_client():
+            async with client:
+                self.increment_stats(VorgangCounter.SUBMIT_ATTEMPT)
+                response = await vorgang_put.asyncio_detailed(client=client, body=vorgang, x_scraper_id=str(self._scraper_uuid))
 
-        if response.status_code != HTTPStatus.CREATED:
-            id_ = vorgang.ids[0].id if vorgang.ids else vorgang.api_id
-            url_part = f"URL: {vorgang.links[0]} " if vorgang.links else ""
+            if response.status_code == HTTPStatus.CREATED:
+                self.increment_stats(VorgangCounter.SUBMIT_ACCEPTED)
 
-            msg = f"[{id_}]: Got {response.status_code} status code when submitting to PaZuFa API. {url_part}Response: {response.content.decode('utf-8')}"
-            logger.warning(msg)
+            else:
+                self.increment_stats(VorgangCounter.submit_rejected(response.status_code))
+
+                id_ = vorgang.ids[0].id if vorgang.ids else vorgang.api_id
+                url_part = f"URL: {vorgang.links[0]} " if vorgang.links else ""
+
+                msg = f"[{id_}]: Got {response.status_code} status code when submitting to PaZuFa API. {url_part}Response: {response.content.decode('utf-8')}"
+                logger.warning(msg)

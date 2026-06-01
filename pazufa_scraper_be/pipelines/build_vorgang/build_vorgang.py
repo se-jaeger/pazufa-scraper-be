@@ -12,15 +12,16 @@ from pazufa_corelib.api_client.types import UNSET
 from scrapy.exceptions import DropItem
 
 from pazufa_scraper_be.pardok import APrDokument, DokTyp, DrsDokument, GesetzVorgang, GVBlDokument, PlPrDokument
-from pazufa_scraper_be.pipelines._base import CacheDirPipeline
+from pazufa_scraper_be.pipelines._base import CacheDirPipeline, StatsPipeline
 from pazufa_scraper_be.pipelines.build_vorgang import build_pazufa_dokument
 from pazufa_scraper_be.pipelines.build_vorgang.rules import BackwardMergeRule, DropRule, ForwardMergeRule, apply_rules
 from pazufa_scraper_be.pipelines.build_vorgang.utils import DokumentContainer, get_station_typ_and_gremium, get_station_zeitpunkte
+from pazufa_scraper_be.pipelines.counter_names import VorgangCounter
 
 logger = logging.getLogger(__name__)
 
 
-class BuildPaZuFaVorgang(CacheDirPipeline):
+class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
     """Pipeline that converts a GesetzVorgang into a PaZuFa Vorgang API model."""
 
     # TODO(se-jaeger): refactor to reduce complexity
@@ -42,6 +43,7 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
                 dok_containers.append(DokumentContainer(pardok, pazufa))
 
         if len(dok_containers) == 0:
+            self.increment_stats(VorgangCounter.DROP_NO_DOCUMENTS)
             msg = f"[{vorgang.id}]: Could not create any Dokument from Vorgang."
             raise DropItem(msg)
 
@@ -91,6 +93,7 @@ class BuildPaZuFaVorgang(CacheDirPipeline):
         dok_containers = apply_rules(pardok_pazufa_doks=dok_containers, rules=rules)
 
         if len(dok_containers) == 0:
+            self.increment_stats(VorgangCounter.DROP_NO_STATIONS)
             msg = f"[{vorgang.id}]: Could not create any Stations."
             raise DropItem(msg)
 

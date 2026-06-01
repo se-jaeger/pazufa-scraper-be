@@ -5,9 +5,6 @@ from typing import Self
 
 import litellm
 from pazufa_corelib.api_client import AuthenticatedClient
-from pazufa_corelib.api_client.api.vorgang import vorgang_put
-from pazufa_corelib.api_client.models.vorgang import Vorgang
-from pazufa_corelib.api_client.types import Response
 from pazufa_corelib.llm import LLMConnector
 from pydantic import HttpUrl
 from scrapy.crawler import Crawler
@@ -15,6 +12,7 @@ from scrapy.statscollectors import StatsCollector
 
 from pazufa_scraper_be.constants import DOK_BASE_URL
 from pazufa_scraper_be.pardok import AnyGesetzDokument
+from pazufa_scraper_be.pipelines.counter_names import StatsCounter
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +34,23 @@ class BasePipeline(ABC):
 
     @abstractmethod
     def init(self: Self) -> None: ...
+
+
+class StatsPipeline(BasePipeline):
+    """Adds convenience method to log PaZuFa stats.
+
+    Reference: https://docs.scrapy.org/en/latest/topics/stats.html
+    """
+
+    def init(self: Self) -> None:
+        super().init()
+
+        self.stats = self.crawler.stats
+
+    def increment_stats(self: Self, counter: StatsCounter | str) -> None:
+        if self.stats is not None:
+            key = counter.value if isinstance(counter, StatsCounter) else counter
+            self.stats.inc_value(key)
 
 
 class CacheDirPipeline(BasePipeline):
@@ -93,13 +108,11 @@ class ApiPipeline(BasePipeline):
             msg = "API_TOKEN is not set. Will not submit to backend."
             logger.info(msg)
 
-    async def put_vorgang(self: Self, vorgang: Vorgang) -> Response | None:
-        if self._api_token is None:
-            return None
+    def get_client(self: Self) -> AuthenticatedClient | None:
+        if self._api_token is not None:
+            return AuthenticatedClient(base_url=self._api_url, token=self._api_token, prefix="", auth_header_name="X-API-Key")
 
-        client = AuthenticatedClient(base_url=self._api_url, token=self._api_token, prefix="", auth_header_name="X-API-Key")
-        async with client:
-            return await vorgang_put.asyncio_detailed(client=client, body=vorgang, x_scraper_id=str(self._scraper_uuid))
+        return None
 
 
 class LLMPipeline(BasePipeline):
