@@ -12,7 +12,7 @@ from scrapy.statscollectors import StatsCollector
 
 from pazufa_scraper_be.constants import DOK_BASE_URL
 from pazufa_scraper_be.pardok import AnyGesetzDokument
-from pazufa_scraper_be.pipelines.counter_names import StatsCounter
+from pazufa_scraper_be.pipelines.stats_counter import StatsCounter
 
 logger = logging.getLogger(__name__)
 

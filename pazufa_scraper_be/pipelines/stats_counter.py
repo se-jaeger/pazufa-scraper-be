@@ -13,19 +13,21 @@ class StatsCounter(StrEnum):
     """Counters tracking the lifecycle of the entire scraping."""
 
 
-class VorgangCounter(StrEnum):
+class VorgangCounter(StatsCounter):
     """Counters tracking the lifecycle of a ``GesetzVorgang`` item."""
 
-    TOTAL = _VORGANG
+    TOTAL = _VORGANG + "/total"
+
     DROP_INCORRECT = _VORGANG_DROP + "/incorrect"
     DROP_NO_DOCUMENTS = _VORGANG_DROP + "/no_documents"
     DROP_NO_STATIONS = _VORGANG_DROP + "/no_stations"
+
     SUBMIT_ATTEMPT = _VORGANG_SUBMIT + "/attempt"
     SUBMIT_ACCEPTED = _VORGANG_SUBMIT + "/accepted"
     SUBMIT_REJECTED = _VORGANG_REJECTED
 
     @staticmethod
-    def submit_rejected(error: HTTPStatus) -> str:
+    def submit_rejected_code(error: HTTPStatus) -> str:
         """Return the counter name for a dispatch-by-document-type LLM call."""
         return f"{VorgangCounter.SUBMIT_REJECTED}/{error.value}"
 
@@ -41,7 +43,9 @@ class DokumentCounter(StatsCounter):
 
     CACHE_HIT = _DOK_CACHE + "/hit"
     CACHE_MISS = _DOK_CACHE + "/miss"
+
     DOWNLOAD_DONE = _DOK_DOWNLOAD + "/done"
+
     DOWNLOAD_FAILED_INCORRECT_RESPONSE = _DOK_DOWNLOAD_FAILED + "/incorrect_response"
     DOWNLOAD_FAILED_INCORRECT_STATUS = _DOK_DOWNLOAD_FAILED + "/incorrect_status"
 
@@ -57,7 +61,9 @@ class TextCounter(StatsCounter):
 
     CACHE_HIT = _TEXT_CACHE + "/hit"
     CACHE_MISS = _TEXT_CACHE + "/miss"
+
     EXTRACT_DONE = _TEXT_EXTRACT + "/done"
+
     EXTRACT_FAILED_EMPTY_TEXT = _TEXT_EXTRACT_FAILED + "/empty_text"
     EXTRACT_FAILED_NOT_PLAIN_TEXT = _TEXT_EXTRACT_FAILED + "/not_plain_text"
 
@@ -83,6 +89,7 @@ class LLMCounter(StatsCounter):
 
     SUMMARIZE_EXTRACT_RELEVANT_SECTION = _LLM_SUMMARIZE + "/extract_relevant_section"
     SUMMARIZE_DONE = _LLM_SUMMARIZE + "/done"
+
     SUMMARIZE_FAILED_PROVIDER = _LLM_SUMMARIZE_FAILED + "/provider"
     SUMMARIZE_FAILED_APPLICATION = _LLM_SUMMARIZE_FAILED + "/application"
     SUMMARIZE_FAILED_EMPTY_SUMMARY = _LLM_SUMMARIZE_FAILED + "/empty_summary"

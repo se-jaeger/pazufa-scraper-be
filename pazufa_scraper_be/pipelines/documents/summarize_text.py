@@ -11,7 +11,7 @@ from pazufa_scraper_be.constants import SUMMARY_FILE_NAME, TEXT_FILE_NAME
 from pazufa_scraper_be.pardok import BaseGesetzDokument, DrsDokument, GesetzVorgang, GVBlDokument
 from pazufa_scraper_be.pardok.dokument import Protokoll
 from pazufa_scraper_be.pipelines._base import CacheDirPipeline, LLMPipeline, StatsPipeline
-from pazufa_scraper_be.pipelines.counter_names import LLMCounter, SummaryCounter
+from pazufa_scraper_be.pipelines.stats_counter import LLMCounter, SummaryCounter
 
 logger = logging.getLogger(__name__)
 

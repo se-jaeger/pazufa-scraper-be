@@ -8,7 +8,7 @@ from scrapy.exceptions import DropItem
 from pazufa_scraper_be.constants import DOKUMENT_FILE_NAME, TEXT_FILE_NAME
 from pazufa_scraper_be.pardok import GesetzVorgang
 from pazufa_scraper_be.pipelines._base import CacheDirPipeline, StatsPipeline
-from pazufa_scraper_be.pipelines.counter_names import TextCounter
+from pazufa_scraper_be.pipelines.stats_counter import TextCounter
 
 logger = logging.getLogger(__name__)
 

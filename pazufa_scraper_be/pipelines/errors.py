@@ -4,7 +4,7 @@ from scrapy.exceptions import DropItem
 
 from pazufa_scraper_be.pardok import GesetzVorgang
 from pazufa_scraper_be.pipelines._base import StatsPipeline
-from pazufa_scraper_be.pipelines.counter_names import VorgangCounter
+from pazufa_scraper_be.pipelines.stats_counter import VorgangCounter
 
 
 class ReportAndDropErrors(StatsPipeline):

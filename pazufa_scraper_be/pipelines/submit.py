@@ -7,7 +7,7 @@ from pazufa_corelib.api_client.models.vorgang import Vorgang
 from scrapy.exceptions import DropItem
 
 from pazufa_scraper_be.pipelines._base import ApiPipeline, StatsPipeline
-from pazufa_scraper_be.pipelines.counter_names import VorgangCounter
+from pazufa_scraper_be.pipelines.stats_counter import VorgangCounter
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class SubmitVorgang(ApiPipeline, StatsPipeline):
                 self.increment_stats(VorgangCounter.SUBMIT_ACCEPTED)
 
             else:
-                self.increment_stats(VorgangCounter.submit_rejected(response.status_code))
+                self.increment_stats(VorgangCounter.submit_rejected_code(response.status_code))
 
                 id_ = vorgang.ids[0].id if vorgang.ids else vorgang.api_id
                 url_part = f"URL: {vorgang.links[0]} " if vorgang.links else ""

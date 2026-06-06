@@ -16,7 +16,7 @@ from pazufa_scraper_be.pipelines._base import CacheDirPipeline, StatsPipeline
 from pazufa_scraper_be.pipelines.build_vorgang import build_pazufa_dokument
 from pazufa_scraper_be.pipelines.build_vorgang.rules import BackwardMergeRule, DropRule, ForwardMergeRule, apply_rules
 from pazufa_scraper_be.pipelines.build_vorgang.utils import DokumentContainer, get_station_typ_and_gremium, get_station_zeitpunkte
-from pazufa_scraper_be.pipelines.counter_names import VorgangCounter
+from pazufa_scraper_be.pipelines.stats_counter import VorgangCounter
 
 logger = logging.getLogger(__name__)
 

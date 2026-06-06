@@ -12,7 +12,7 @@ from scrapy.http.request import NO_CALLBACK
 from pazufa_scraper_be.constants import DOKUMENT_FILE_NAME, DOWNLOAD_TIME_FILE_NAME, FILE_BYTE_HASH_FILE_NAME, LAST_MODIFIED_FILE_NAME, URL_FILE_NAME
 from pazufa_scraper_be.pardok import GesetzVorgang
 from pazufa_scraper_be.pipelines._base import CacheDirPipeline, StatsPipeline
-from pazufa_scraper_be.pipelines.counter_names import DokumentCounter
+from pazufa_scraper_be.pipelines.stats_counter import DokumentCounter
 
 logger = logging.getLogger(__name__)
 

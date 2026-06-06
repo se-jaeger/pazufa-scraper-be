@@ -40,6 +40,9 @@ API_TOKEN = os.environ.get("PAZUFA_API_TOKEN")
 LLM_TOKEN = os.environ.get("PAZUFA_LLM_TOKEN")
 LLM_MODEL = os.environ.get("PAZUFA_LLM_MODEL", "openrouter/openai/gpt-5-nano")
 
+MATTERMOST_URL = os.environ.get("PAZUFA_MATTERMOST_URL", "https://chat.pazufa.de/hooks")
+MATTERMOST_TOKEN = os.environ.get("PAZUFA_MATTERMOST_TOKEN")
+
 # Scrapy Settings
 BOT_NAME = "PaZuFa_Berlin_Scraper"
 
@@ -75,6 +78,10 @@ ITEM_PIPELINES = {
     SummarizeExtractedPDFText: 130,
     BuildPaZuFaVorgang: 999,
     SubmitVorgang: 1000,
+}
+
+EXTENSIONS = {
+    "pazufa_scraper_be.mattermost.MattermostNotifier": 500,
 }
 
 # Enable and configure HTTP caching (disabled by default)
