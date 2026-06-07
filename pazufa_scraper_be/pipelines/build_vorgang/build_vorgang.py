@@ -19,6 +19,7 @@ from pazufa_scraper_be.pipelines.build_vorgang.rules import (
     ForwardMergeRule,
     TransformRule,
     apply_rules,
+    get_change_urheber_transform_fn,
 )
 from pazufa_scraper_be.pipelines.build_vorgang.utils import (
     DokumentContainer,
@@ -53,7 +54,13 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
         ]
 
     def _get_transform_rules(self: Self) -> list[TransformRule]:
-        return []
+        return [
+            TransformRule(
+                name="Change Autor/Urheber of Beschlussempfehlung '19/2984' to 'Ausschuss für Bildung, Jugend und Familie'",
+                when=lambda current: isinstance(current.pardok, DrsDokument) and current.pardok.typ == DokTyp.BeschlEmpf and current.pardok.nr == "19/2984",
+                transform_function=get_change_urheber_transform_fn("Ausschuss für Bildung, Jugend und Familie"),
+            ),
+        ]
 
     def _get_forward_merge_rules(self: Self) -> list[ForwardMergeRule]:
         return [

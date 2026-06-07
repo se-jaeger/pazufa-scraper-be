@@ -4,6 +4,9 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from pazufa_corelib.api_client.models import Autor
+
+from pazufa_scraper_be.pardok import DrsDokument
 from pazufa_scraper_be.pipelines.build_vorgang.utils import DokumentContainer
 
 if TYPE_CHECKING:
@@ -11,6 +14,20 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+
+def get_change_urheber_transform_fn(urheber: str) -> Callable[[DokumentContainer], None]:
+    """Get transform function that changes Autor/Urheber."""
+
+    def _change_urheber_transform_fn(current: DokumentContainer) -> None:
+        if not isinstance(current.pardok, DrsDokument):
+            return
+
+        current.pardok.urheber = [urheber]
+        if len(current.pazufa) >= 1:
+            current.pazufa[0].autoren = [Autor(organisation=urheber)]
+
+    return _change_urheber_transform_fn
 
 
 @dataclass
