@@ -1,5 +1,6 @@
 DOK_BASE_URL = "https://pardok.parlament-berlin.de/starweb/adis/citat/VT"
 
+
 DOKUMENT_FILE_NAME = "DOKUMENT.pdf"
 URL_FILE_NAME = "URL.txt"
 DOWNLOAD_TIME_FILE_NAME = "DOWNLOAD_TIME.txt"

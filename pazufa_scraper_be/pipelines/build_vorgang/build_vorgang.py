@@ -48,7 +48,7 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
                 name="Drop postponed Lesung",
                 when=lambda current: (
                     isinstance(current.pardok, PlPrDokument)
-                    and current.pardok.typ == "Behandlung im Plenum"
+                    and current.pardok.typ == DokTyp.Behandlung_im_Plenum
                     and current.pardok.abstract is not None
                     and bool(re.search(r"\bVertagt\b", current.pardok.abstract))
                 ),
