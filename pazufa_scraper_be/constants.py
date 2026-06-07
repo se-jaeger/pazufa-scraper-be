@@ -1,3 +1,5 @@
+DOK_CACHE_SUB_DIR_NAME = "dokument"
+DOK_CACHE_HISTORY_SUB_DIR_NAME = ".history"
 DOK_BASE_URL = "https://pardok.parlament-berlin.de/starweb/adis/citat/VT"
 
 
