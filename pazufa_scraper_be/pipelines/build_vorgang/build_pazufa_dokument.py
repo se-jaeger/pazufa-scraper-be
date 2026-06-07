@@ -9,12 +9,6 @@ from pazufa_corelib.api_client.models import Autor, Doktyp
 from pazufa_corelib.api_client.models import Dokument as PaZuFaDokument
 from pazufa_corelib.api_client.types import UNSET, Unset
 
-from pazufa_scraper_be.constants import (
-    FILE_BYTE_HASH_FILE_NAME,
-    LAST_MODIFIED_FILE_NAME,
-    SUMMARY_FILE_NAME,
-    TEXT_FILE_NAME,
-)
 from pazufa_scraper_be.pardok import APrDokument, BaseGesetzDokument, DokTyp, DrsDokument, GVBlDokument, PlPrDokument
 from pazufa_scraper_be.pardok.dokument import AnyGesetzDokument, DokArt, ProtokollTyp
 
@@ -22,6 +16,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from pydantic import HttpUrl
+
+    from pazufa_scraper_be.pipelines.documents.utils import DocumentCache
 
 logger = logging.getLogger(__name__)
 
@@ -60,13 +56,13 @@ def _get_typ(dokument: BaseGesetzDokument) -> Doktyp:
     return Doktyp.SONSTIG
 
 
-def _get_drucksnr(dokument: BaseGesetzDokument, dokument_cache_dir: Path | None) -> str:
+def _get_drucksnr(dokument: BaseGesetzDokument, document_cache: DocumentCache) -> str:
     if isinstance(dokument, (DrsDokument, PlPrDokument)):
         return dokument.nr
 
     # Ausschussprotokolle append their type abbreviation to avoid Backend treating them as the same document due to the same Nr.
     if isinstance(dokument, APrDokument):
-        cache_dir_suffix = f"-{dokument_cache_dir.name[-2:]}" if dokument_cache_dir else ""
+        cache_dir_suffix = f"-{document_cache.directory.name[-2:]}"
         return f"{dokument.nr}{cache_dir_suffix}"
 
     if isinstance(dokument, GVBlDokument):
@@ -87,17 +83,17 @@ _DRS_TYP_LABELS: dict[DokTyp, str] = {
 }
 
 
-def _get_titel(dokument: AnyGesetzDokument, dokument_cache_dir: Path) -> str:
+def _get_titel(dokument: AnyGesetzDokument, document_cache: DocumentCache) -> str:
     """Derive a human-readable title for a document, falling back to its art label."""
     if isinstance(dokument, (GVBlDokument, DrsDokument)) and isinstance(dokument.titel, str):
         return dokument.titel
 
-    drucksnr = _get_drucksnr(dokument, dokument_cache_dir)
+    drucksnr = _get_drucksnr(dokument, document_cache)
     suffix = f" - {drucksnr}" if drucksnr else ""
 
     if isinstance(dokument, APrDokument):
         for typ, label in _APR_SUFFIX_LABELS.items():
-            if dokument_cache_dir.name.endswith(f"-{typ}"):
+            if document_cache.directory.name.endswith(f"-{typ}"):
                 return f"{label}{suffix[:-3]}"  # for Dokument Titel, we do not need the '-ip' suffix
 
     if isinstance(dokument, DrsDokument) and (label := _DRS_TYP_LABELS.get(dokument.typ)):
@@ -141,15 +137,14 @@ def _get_autoren(dokument: AnyGesetzDokument) -> list[Autor]:
     return autoren
 
 
-def _get_zp_modifiziert(dokument: AnyGesetzDokument, dokument_cache_dir: Path) -> datetime:
-
-    last_modified_file = dokument_cache_dir / LAST_MODIFIED_FILE_NAME
-
-    if last_modified_file.exists():
-        dt = datetime.fromisoformat(last_modified_file.read_text())
+def _get_zp_modifiziert(dokument: AnyGesetzDokument, document_cache: DocumentCache) -> datetime:
+    if document_cache.last_modified_file.exists():
+        dt = datetime.fromisoformat(document_cache.last_modified_file.read_text())
         return datetime(dt.year, dt.month, dt.day, tzinfo=UTC)
+
     if dokument.dat is not None:
         return dokument.dat
+
     msg = "Could not resolve zp_modifiziert."
     raise ValueError(msg)
 
@@ -164,10 +159,10 @@ def _get_zp_referenz(dokument: AnyGesetzDokument) -> datetime:
     return datetime.now(tz=UTC)
 
 
-def _get_zeitpunkte(dokument: AnyGesetzDokument, dokument_cache_dir: Path) -> tuple[Unset | datetime, datetime, datetime]:
+def _get_zeitpunkte(dokument: AnyGesetzDokument, document_cache: DocumentCache) -> tuple[Unset | datetime, datetime, datetime]:
     """Extract timestamps relevant for document."""
     zp_referenz = _get_zp_referenz(dokument)
-    zp_modifiziert = _get_zp_modifiziert(dokument, dokument_cache_dir)
+    zp_modifiziert = _get_zp_modifiziert(dokument, document_cache)
 
     # TODO(anyone): revisit this
     zp_erstellt = UNSET
@@ -191,6 +186,7 @@ def _check_hash_file(dokument: AnyGesetzDokument, file_byte_hash_file: Path) -> 
     if hash_file_missing:
         msg = f"[{dokument.vorgang.id} - {dokument.id}]: Hash file does not exist, ignoring Dokument."
         logger.warning(msg)
+
     return hash_file_missing
 
 
@@ -204,32 +200,25 @@ def _check_summary_file(dokument: AnyGesetzDokument, summary_file: Path) -> bool
     return summary_file_missing
 
 
-def build_pazufa_dokument(dokument: AnyGesetzDokument, dokument_cache_dir: Path | None, url: HttpUrl) -> PaZuFaDokument | None:
+def build_pazufa_dokument(dokument: AnyGesetzDokument, document_cache: DocumentCache, url: HttpUrl) -> PaZuFaDokument | None:
     """Build a PaZuFaDokument from a cached document, returning None if required files are missing."""
-    if dokument_cache_dir is None:
-        return None
-
-    text_file = dokument_cache_dir / TEXT_FILE_NAME
-    summary_file = dokument_cache_dir / SUMMARY_FILE_NAME
-    file_byte_hash_file = dokument_cache_dir / FILE_BYTE_HASH_FILE_NAME
-
-    text_file_missing = _check_text_file(dokument, text_file)
-    hash_file_missing = _check_hash_file(dokument, file_byte_hash_file)
+    text_file_missing = _check_text_file(dokument, document_cache.text_file)
+    hash_file_missing = _check_hash_file(dokument, document_cache.file_byte_hash_file)
 
     if text_file_missing or hash_file_missing:
         return None
 
-    summary_file_missing = _check_summary_file(dokument, summary_file)
+    summary_file_missing = _check_summary_file(dokument, document_cache.summary_file)
 
-    volltext = text_file.read_text()
-    hash_ = file_byte_hash_file.read_text()
-    zusammenfassung = UNSET if summary_file_missing else summary_file.read_text()
+    volltext = document_cache.text_file.read_text()
+    hash_ = document_cache.file_byte_hash_file.read_text()
+    zusammenfassung = UNSET if summary_file_missing else document_cache.summary_file.read_text()
 
-    zp_erstellt, zp_referenz, zp_modifiziert = _get_zeitpunkte(dokument, dokument_cache_dir)
+    zp_erstellt, zp_referenz, zp_modifiziert = _get_zeitpunkte(dokument, document_cache)
 
     return PaZuFaDokument(
         typ=_get_typ(dokument),
-        titel=_get_titel(dokument, dokument_cache_dir),
+        titel=_get_titel(dokument, document_cache),
         volltext=volltext,
         zp_erstellt=zp_erstellt,
         zp_referenz=zp_referenz,
@@ -237,7 +226,7 @@ def build_pazufa_dokument(dokument: AnyGesetzDokument, dokument_cache_dir: Path 
         link=str(url),
         hash_=hash_,
         autoren=_get_autoren(dokument),
-        drucksnr=_get_drucksnr(dokument, dokument_cache_dir),
+        drucksnr=_get_drucksnr(dokument, document_cache),
         zusammenfassung=zusammenfassung,
         # NOTE: Following should be revisited
         kurztitel=UNSET,

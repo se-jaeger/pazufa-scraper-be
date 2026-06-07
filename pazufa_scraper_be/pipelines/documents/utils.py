@@ -57,3 +57,8 @@ class DocumentCache:
         for file in self.directory.iterdir():
             if file.is_file():
                 file.rename(history_dir / file.name)
+
+    def link_model_specific_summary_file(self: Self, model_specific_summary_file: Path) -> None:
+        """Create a symlink from summary_file pointing to the model-specific summary file."""
+        self.summary_file.unlink(missing_ok=True)
+        self.summary_file.symlink_to(model_specific_summary_file.relative_to(self.summary_file.parent))
