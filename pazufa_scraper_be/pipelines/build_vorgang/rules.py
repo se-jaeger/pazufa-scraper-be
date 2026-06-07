@@ -30,6 +30,15 @@ def get_change_urheber_transform_fn(urheber: str) -> Callable[[DokumentContainer
     return _change_urheber_transform_fn
 
 
+def get_change_abstract_transform_fn(abstract: str) -> Callable[[DokumentContainer], None]:
+    """Get transform function that changes Abstract."""
+
+    def _change_abstract_transform_fn(current: DokumentContainer) -> None:
+        current.pardok.abstract = abstract
+
+    return _change_abstract_transform_fn
+
+
 @dataclass
 class Rule:
     """Base rule that evaluates whether a DokumentContainer matches a condition."""

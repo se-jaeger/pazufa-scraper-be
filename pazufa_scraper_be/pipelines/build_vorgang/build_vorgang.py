@@ -10,6 +10,7 @@ from pazufa_corelib.api_client.models import Vorgang as PaZuFaVorgang
 from pazufa_corelib.api_client.types import UNSET
 from scrapy.exceptions import DropItem
 
+from pazufa_scraper_be.constants import ANGENOMMEN
 from pazufa_scraper_be.pardok import APrDokument, DokTyp, DrsDokument, GesetzVorgang, GVBlDokument, PlPrDokument
 from pazufa_scraper_be.pipelines._base import CacheDirPipeline, StatsPipeline
 from pazufa_scraper_be.pipelines.build_vorgang import build_pazufa_dokument
@@ -19,6 +20,7 @@ from pazufa_scraper_be.pipelines.build_vorgang.rules import (
     ForwardMergeRule,
     TransformRule,
     apply_rules,
+    get_change_abstract_transform_fn,
     get_change_urheber_transform_fn,
 )
 from pazufa_scraper_be.pipelines.build_vorgang.utils import (
@@ -59,6 +61,11 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
                 name="Change Autor/Urheber of Beschlussempfehlung '19/2984' to 'Ausschuss für Bildung, Jugend und Familie'",
                 when=lambda current: isinstance(current.pardok, DrsDokument) and current.pardok.typ == DokTyp.BeschlEmpf and current.pardok.nr == "19/2984",
                 transform_function=get_change_urheber_transform_fn("Ausschuss für Bildung, Jugend und Familie"),
+            ),
+            TransformRule(
+                name="Change Abstract of Lesung '19/50' to 'Angenommen'",
+                when=lambda current: isinstance(current.pardok, PlPrDokument) and current.pardok.typ == DokTyp.Lesung_II and current.pardok.nr == "19/50",
+                transform_function=get_change_abstract_transform_fn(ANGENOMMEN),
             ),
         ]
 
