@@ -45,6 +45,10 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
                 log=lambda: self.increment_stats(VorgangCounter.IRRELEVANT),
             ),
             DropRule(
+                name="Drop Ausschussberatung '19/100' after Rejection for Vorgang 'V-435029'",
+                when=lambda current: isinstance(current.pardok, APrDokument) and current.pardok.nr == "19/100" and current.pardok.vorgang.id == "V-435029",
+            ),
+            DropRule(
                 name="Drop postponed Lesung",
                 when=lambda current: (
                     isinstance(current.pardok, PlPrDokument)
