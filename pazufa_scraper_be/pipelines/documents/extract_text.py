@@ -5,7 +5,6 @@ import kreuzberg
 import magic
 from scrapy.exceptions import DropItem
 
-from pazufa_scraper_be.constants import DOKUMENT_FILE_NAME, TEXT_FILE_NAME
 from pazufa_scraper_be.pardok import GesetzVorgang
 from pazufa_scraper_be.pipelines._base import CacheDirPipeline, StatsPipeline
 from pazufa_scraper_be.pipelines.stats_counter import TextCounter
@@ -24,23 +23,16 @@ class ExtractTextFromPDF(CacheDirPipeline, StatsPipeline):
 
         for dokument in vorgang.dokumente:
             for dokument_url in dokument.all_urls:
-                dokument_cache_dir = self.get_dokument_cache_dir(dokument=dokument, url=dokument_url)
-                if dokument_cache_dir is None:
-                    msg = f"[{vorgang.id} - {dokument.id}]: Did not get cache dir for additional URL: {dokument_url}"
-                    logger.warning(msg)
-                    continue
+                document_cache = self.get_document_cache(document=dokument, document_url=dokument_url)
 
-                dokument_file = dokument_cache_dir / DOKUMENT_FILE_NAME
-                dokument_text_file = dokument_cache_dir / TEXT_FILE_NAME
-
-                if dokument_file.exists():
-                    if dokument_text_file.exists():
+                if document_cache.document_file.exists():
+                    if document_cache.text_file.exists():
                         self.increment_stats(TextCounter.CACHE_HIT)
                         continue
 
                     self.increment_stats(TextCounter.CACHE_MISS)
                     pdf = await kreuzberg.extract_file(
-                        dokument_file,
+                        document_cache.document_file,
                         config=kreuzberg.ExtractionConfig(enable_quality_processing=True, pages=kreuzberg.PageConfig(extract_pages=True), use_cache=False),
                     )
                     text = "\n".join([page.get("content", "") for page in pdf.pages or []])
@@ -67,7 +59,7 @@ class ExtractTextFromPDF(CacheDirPipeline, StatsPipeline):
 
                         # NOTE: This is a hack, where the mime type of the saved file gets 'text/plain', which is causing issues
                         if magic.from_file(error_file, mime=True) == "text/plain":
-                            error_file.rename(dokument_text_file)
+                            error_file.rename(document_cache.text_file)
 
                         else:
                             self.increment_stats(TextCounter.EXTRACT_FAILED_NOT_PLAIN_TEXT)
@@ -76,6 +68,6 @@ class ExtractTextFromPDF(CacheDirPipeline, StatsPipeline):
 
                     else:
                         self.increment_stats(TextCounter.EXTRACT_DONE)
-                        dokument_text_file.write_text(text)
+                        document_cache.text_file.write_text(text)
 
         return vorgang
