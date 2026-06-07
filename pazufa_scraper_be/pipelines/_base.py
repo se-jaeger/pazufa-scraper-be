@@ -1,18 +1,27 @@
+from __future__ import annotations
+
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
 import litellm
 from pazufa_corelib.api_client import AuthenticatedClient
 from pazufa_corelib.llm import LLMConnector
-from pydantic import HttpUrl
-from scrapy.crawler import Crawler
 from scrapy.statscollectors import StatsCollector
 
-from pazufa_scraper_be.constants import DOK_BASE_URL
-from pazufa_scraper_be.pardok import AnyGesetzDokument
+from pazufa_scraper_be.constants import (
+    DOK_BASE_URL,
+    DOK_CACHE_SUB_DIR_NAME,
+)
 from pazufa_scraper_be.pipelines.stats_counter import StatsCounter
+
+if TYPE_CHECKING:
+    from pydantic import HttpUrl
+    from scrapy.crawler import Crawler
+
+    from pazufa_scraper_be.pardok import AnyGesetzDokument
+    from pazufa_scraper_be.pipelines.documents.utils import DocumentCache
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +67,7 @@ class CacheDirPipeline(BasePipeline):
         super().init()
 
         self._cache_dir = Path(self.crawler.settings.get("CACHE_DIR")) / str(self.wahlperiode)
+        self._dok_cache_dir = Path(self.crawler.settings.get("CACHE_DIR")) / str(self.wahlperiode) / DOK_CACHE_SUB_DIR_NAME
         self._errors_dir = Path(self.crawler.settings.get("ERRORS_DIR")) / str(self.wahlperiode)
 
         if self._cache_dir is None:
@@ -67,6 +77,11 @@ class CacheDirPipeline(BasePipeline):
         if self._errors_dir is None:
             msg = "Missing ERRORS_DIR setting."
             raise ValueError(msg)
+
+    def get_document_cache(self: Self, document: AnyGesetzDokument, document_url: HttpUrl) -> DocumentCache:
+        from pazufa_scraper_be.pipelines.documents.utils import DocumentCache  # noqa: PLC0415
+
+        return DocumentCache(document_cache_dir=self._dok_cache_dir, wahlperiode=self.wahlperiode, document=document, document_url=document_url)
 
     def get_dokument_cache_dir(self: Self, dokument: AnyGesetzDokument, url: HttpUrl) -> Path | None:
         if url != dokument.lok_url and dokument.additional_urls and url not in dokument.additional_urls:
