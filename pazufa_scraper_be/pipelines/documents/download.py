@@ -38,7 +38,7 @@ class DownloadAndCacheDocuments(CacheDirPipeline, StatsPipeline):
                 document_cache = self.get_document_cache(document=dokument, document_url=dokument_url)
 
                 # TODO(anyone): https://codeberg.org/PaZuFa/pazufa-scraper-be/issues/30
-                if dokument_file.exists():
+                if document_cache.document_file.exists():
                     self.increment_stats(DokumentCounter.CACHE_HIT)
                     continue
 
