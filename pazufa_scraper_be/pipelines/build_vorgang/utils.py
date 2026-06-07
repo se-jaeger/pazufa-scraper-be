@@ -111,7 +111,7 @@ def check_and_create_vote_outcome_station(station: Station, dok_abstract: str) -
 
         if typ:
             new_station = Station.from_dict(station.to_dict() | {"typ": typ, "titel": titel})
-            new_station.zp_start = station.zp_start + timedelta(hours=1)
+            new_station.zp_start = station.zp_start + timedelta(minutes=30)
 
             return new_station
 
