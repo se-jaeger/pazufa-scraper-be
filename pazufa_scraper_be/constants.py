@@ -15,6 +15,7 @@ TRANSIENT_ERROR_THRESHOLD = 30
 
 
 ANGENOMMEN = "Angenommen"
+VERTAGT = "Vertagt"
 ZUSTIMMUNG = "Zustimmung"
 ABGELEHNT = "Abgelehnt"
 ZURUECKGEZOGEN = "Zurückgezogen"

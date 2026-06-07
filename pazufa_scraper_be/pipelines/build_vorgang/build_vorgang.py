@@ -10,7 +10,7 @@ from pazufa_corelib.api_client.models import Vorgang as PaZuFaVorgang
 from pazufa_corelib.api_client.types import UNSET
 from scrapy.exceptions import DropItem
 
-from pazufa_scraper_be.constants import ANGENOMMEN
+from pazufa_scraper_be.constants import ANGENOMMEN, VERTAGT
 from pazufa_scraper_be.pardok import APrDokument, DokTyp, DrsDokument, GesetzVorgang, GVBlDokument, PlPrDokument
 from pazufa_scraper_be.pipelines._base import CacheDirPipeline, StatsPipeline
 from pazufa_scraper_be.pipelines.build_vorgang import build_pazufa_dokument
@@ -50,7 +50,7 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
                     isinstance(current.pardok, PlPrDokument)
                     and current.pardok.typ == DokTyp.Behandlung_im_Plenum
                     and current.pardok.abstract is not None
-                    and bool(re.search(r"\bVertagt\b", current.pardok.abstract))
+                    and bool(re.search(rf"\b{VERTAGT}\b", current.pardok.abstract))
                 ),
             ),
         ]
