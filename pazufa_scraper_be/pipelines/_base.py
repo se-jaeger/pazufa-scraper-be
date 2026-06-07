@@ -11,7 +11,6 @@ from pazufa_corelib.llm import LLMConnector
 from scrapy.statscollectors import StatsCollector
 
 from pazufa_scraper_be.constants import (
-    DOK_BASE_URL,
     DOK_CACHE_SUB_DIR_NAME,
 )
 from pazufa_scraper_be.pipelines.stats_counter import StatsCounter
@@ -82,18 +81,6 @@ class CacheDirPipeline(BasePipeline):
         from pazufa_scraper_be.pipelines.documents.utils import DocumentCache  # noqa: PLC0415
 
         return DocumentCache(document_cache_dir=self._dok_cache_dir, wahlperiode=self.wahlperiode, document=document, document_url=document_url)
-
-    def get_dokument_cache_dir(self: Self, dokument: AnyGesetzDokument, url: HttpUrl) -> Path | None:
-        if url != dokument.lok_url and dokument.additional_urls and url not in dokument.additional_urls:
-            return None
-
-        # NOTE: cache dir is Dokument URL without constant base, we replace 'Dok Art' part to be consistent
-        # with rest of code base and drop the '.pdf' suffix in dir name.
-        dokument_cache_dir = self._cache_dir / "dokument" / dokument.art
-        dokument_cache_dir = dokument_cache_dir.joinpath(*Path(str(url).removeprefix(f"{DOK_BASE_URL}/{self.wahlperiode}/")).with_suffix("").parts[1:])
-
-        dokument_cache_dir.mkdir(parents=True, exist_ok=True)
-        return dokument_cache_dir
 
     def get_errors_dir(self: Self) -> Path:
         crawl_start_time = self.crawler.stats.get_value("start_time").strftime("%Y-%m-%dT%H:%M:%S") if isinstance(self.crawler.stats, StatsCollector) else ""
