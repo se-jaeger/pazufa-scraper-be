@@ -36,12 +36,11 @@ class DropRule(Rule):
 class TransformRule(Rule):
     """Rule that transforms a matching DokumentContainer."""
 
-    transform_function: Callable[[DokumentContainer], DokumentContainer]
+    transform_function: Callable[[DokumentContainer], None]
     log: Callable[[], None] = lambda: None
 
 
 def _merge_function(current: DokumentContainer, target: DokumentContainer) -> DokumentContainer:
-    """Merge current into target by concatenating abstracts and combining pazufa document lists."""
     abstract = ((target.pardok.abstract or "") + "\n\n" + (current.pardok.abstract or "")).strip()
     target.pardok.abstract = abstract or None
     return DokumentContainer(pardok=target.pardok, pazufa=target.pazufa + current.pazufa)
@@ -107,8 +106,7 @@ def apply_rules(pardok_pazufa_doks: list[DokumentContainer], rules: Sequence[Rul
                                 break
 
                     case TransformRule():
-                        # NOTE: don't break because we (potentially) want to apply other rules
-                        current = rule.transform_function(current)
+                        rule.transform_function(current)
                         rule.log()
 
                     case DropRule():
