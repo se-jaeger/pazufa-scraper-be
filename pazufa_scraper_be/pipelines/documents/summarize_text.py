@@ -7,7 +7,6 @@ import magic
 from pazufa_corelib.llm import LLMProviderError
 from scrapy.exceptions import DropItem
 
-from pazufa_scraper_be.constants import SUMMARY_FILE_NAME, SUMMARY_IGNORE_FILE_NAME, TEXT_FILE_NAME
 from pazufa_scraper_be.pardok import BaseGesetzDokument, DrsDokument, GesetzVorgang, GVBlDokument
 from pazufa_scraper_be.pardok.dokument import Protokoll
 from pazufa_scraper_be.pipelines._base import CacheDirPipeline, LLMPipeline, StatsPipeline
@@ -18,11 +17,6 @@ logger = logging.getLogger(__name__)
 
 class SummarizeExtractedPDFText(CacheDirPipeline, LLMPipeline, StatsPipeline):
     """Pipeline that summarizes extracted document text via an LLM."""
-
-    def link(self: Self, summary_file: Path, model_specific_summary_file: Path) -> None:
-        """Create a symlink from summary_file pointing to the model-specific summary file."""
-        summary_file.unlink(missing_ok=True)
-        summary_file.symlink_to(model_specific_summary_file.relative_to(summary_file.parent))
 
     async def summarize(self: Self, dokument: BaseGesetzDokument, text_file: Path, ignore_file: Path) -> str | None:
         """Summarize extracted document text via the LLM connector, dispatching by document type."""
@@ -62,7 +56,7 @@ class SummarizeExtractedPDFText(CacheDirPipeline, LLMPipeline, StatsPipeline):
         return None
 
     # TODO(se-jaeger): refactor to reduce complexity
-    async def process_item(self: Self, vorgang: GesetzVorgang) -> GesetzVorgang:  # noqa: C901, PLR0912, PLR0915
+    async def process_item(self: Self, vorgang: GesetzVorgang) -> GesetzVorgang:  # noqa: C901, PLR0912
         """Summarize extracted text for each document in the Vorgang and cache the result."""
         if not isinstance(vorgang, GesetzVorgang):
             msg = f"Expected {GesetzVorgang.__name__} object but got {vorgang.__class__.__name__}."
@@ -73,67 +67,66 @@ class SummarizeExtractedPDFText(CacheDirPipeline, LLMPipeline, StatsPipeline):
 
         for dokument in vorgang.dokumente:
             for dokument_url in dokument.all_urls:
-                if dokument_dir := self.get_dokument_cache_dir(dokument=dokument, url=dokument_url):
-                    text_file = dokument_dir / TEXT_FILE_NAME
-                    summary_file = dokument_dir / SUMMARY_FILE_NAME
-                    ignore_file = dokument_dir / SUMMARY_IGNORE_FILE_NAME
+                document_cache = self.get_document_cache(document=dokument, document_url=dokument_url)
 
-                    if ignore_file.exists():
-                        self.increment_stats(SummaryCounter.IGNORE)
+                if document_cache.summary_ignore_file.exists():
+                    self.increment_stats(SummaryCounter.IGNORE)
+                    continue
+
+                # There is no text to summarize => skip
+                if not document_cache.text_file.exists():
+                    continue
+
+                # If model specific summary exist => link and skip
+                if self.llm_model_name is not None:
+                    model_specific_summary_file = document_cache.directory / str(
+                        document_cache.summary_file.stem + "_" + self.llm_model_name.replace("/", "__") + document_cache.summary_file.suffix
+                    )
+
+                    if model_specific_summary_file.exists():
+                        self.increment_stats(SummaryCounter.CACHE_HIT)
+                        document_cache.link_model_specific_summary_file(model_specific_summary_file=model_specific_summary_file)
                         continue
 
-                    # There is no text to summarize => skip
-                    if not text_file.exists():
-                        continue
+                try:
+                    self.increment_stats(SummaryCounter.CACHE_MISS)
+                    summary = await self.summarize(dokument, document_cache.text_file, document_cache.summary_ignore_file)
 
-                    # If model specific summary exist => link and skip
-                    if self.llm_model_name is not None:
-                        model_specific_summary_file = dokument_dir / str(summary_file.stem + "_" + self.llm_model_name.replace("/", "__") + summary_file.suffix)
+                except LLMProviderError as error:
+                    self.increment_stats(LLMCounter.SUMMARIZE_FAILED_PROVIDER)
+                    msg = f"[{vorgang.id} - {dokument.id}]: LLM summarization failed due to provider problem."
+                    logger.warning(msg)
 
-                        if model_specific_summary_file.exists():
-                            self.increment_stats(SummaryCounter.CACHE_HIT)
-                            self.link(summary_file=summary_file, model_specific_summary_file=model_specific_summary_file)
-                            continue
+                    document_cache.summary_ignore_file.write_text(repr(error))
+                    continue
 
-                    try:
-                        self.increment_stats(SummaryCounter.CACHE_MISS)
-                        summary = await self.summarize(dokument, text_file, ignore_file)
+                if summary is None:
+                    self.increment_stats(LLMCounter.SUMMARIZE_FAILED_APPLICATION)
+                    msg = f"[{vorgang.id} - {dokument.id}]: LLM summarization failed due to application problem."
+                    logger.warning(msg)
 
-                    except LLMProviderError as error:
-                        self.increment_stats(LLMCounter.SUMMARIZE_FAILED_PROVIDER)
-                        msg = f"[{vorgang.id} - {dokument.id}]: LLM summarization failed due to provider problem."
-                        logger.warning(msg)
+                elif len(summary) == 0:
+                    self.increment_stats(LLMCounter.SUMMARIZE_FAILED_EMPTY_SUMMARY)
+                    msg = f"[{vorgang.id} - {dokument.id}]: Summary is empty."
+                    logger.warning(msg)
 
-                        ignore_file.write_text(repr(error))
-                        continue
+                elif magic.from_buffer(summary, mime=True) != "text/plain":
+                    error_file = self.get_errors_dir() / f"{dokument.id}__{self.llm_model_name.replace('/', '__')}.summary"
+                    error_file.write_text(summary)
 
-                    if summary is None:
-                        self.increment_stats(LLMCounter.SUMMARIZE_FAILED_APPLICATION)
-                        msg = f"[{vorgang.id} - {dokument.id}]: LLM summarization failed due to application problem."
-                        logger.warning(msg)
-
-                    elif len(summary) == 0:
-                        self.increment_stats(LLMCounter.SUMMARIZE_FAILED_EMPTY_SUMMARY)
-                        msg = f"[{vorgang.id} - {dokument.id}]: Summary is empty."
-                        logger.warning(msg)
-
-                    elif magic.from_buffer(summary, mime=True) != "text/plain":
-                        error_file = self.get_errors_dir() / f"{dokument.id}__{self.llm_model_name.replace('/', '__')}.summary"
-                        error_file.write_text(summary)
-
-                        # NOTE: This is a hack, where the mime type of the saved file gets 'text/plain', which is causing issues
-                        if magic.from_file(error_file, mime=True) == "text/plain":
-                            error_file.rename(model_specific_summary_file)
-                            self.link(summary_file=summary_file, model_specific_summary_file=model_specific_summary_file)
-
-                        else:
-                            self.increment_stats(LLMCounter.SUMMARIZE_FAILED_NOT_PLAIN_TEXT)
-                            msg = f"[{vorgang.id} - {dokument.id}]: Summary is not plain text."
-                            logger.warning(msg)
+                    # NOTE: This is a hack, where the mime type of the saved file gets 'text/plain', which is causing issues
+                    if magic.from_file(error_file, mime=True) == "text/plain":
+                        error_file.rename(model_specific_summary_file)
+                        document_cache.link_model_specific_summary_file(model_specific_summary_file=model_specific_summary_file)
 
                     else:
-                        self.increment_stats(LLMCounter.SUMMARIZE_DONE)
-                        model_specific_summary_file.write_text(summary)
-                        self.link(summary_file=summary_file, model_specific_summary_file=model_specific_summary_file)
+                        self.increment_stats(LLMCounter.SUMMARIZE_FAILED_NOT_PLAIN_TEXT)
+                        msg = f"[{vorgang.id} - {dokument.id}]: Summary is not plain text."
+                        logger.warning(msg)
+
+                else:
+                    self.increment_stats(LLMCounter.SUMMARIZE_DONE)
+                    model_specific_summary_file.write_text(summary)
+                    document_cache.link_model_specific_summary_file(model_specific_summary_file=model_specific_summary_file)
 
         return vorgang
