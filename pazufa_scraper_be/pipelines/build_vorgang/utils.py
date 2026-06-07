@@ -11,7 +11,7 @@ from pazufa_corelib.api_client.models import Dokument as PaZuFaDokument
 from pazufa_corelib.api_client.types import UNSET, Unset
 
 from pazufa_scraper_be.constants import ABGELEHNT, ANGENOMMEN, ZURUECKGEZOGEN, ZUSTIMMUNG
-from pazufa_scraper_be.pardok import APrDokument, BaseGesetzDokument, DrsDokument, GVBlDokument, PlPrDokument
+from pazufa_scraper_be.pardok import APrDokument, BaseGesetzDokument, DrsDokument, GesetzVorgang, GVBlDokument, PlPrDokument
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -25,6 +25,11 @@ class DokumentContainer:
 
     pardok: BaseGesetzDokument
     pazufa: list[PaZuFaDokument]
+
+
+def get_vorgang_schlagworte(vorgang: GesetzVorgang) -> list[str] | None:
+    """Get Schlagworte from Vorgang's Nebeneinträge."""
+    return [n.desk for n in vorgang.nebeneintraege] or None
 
 
 def get_station_typ_and_gremium(dok_container: DokumentContainer) -> tuple[Stationstyp, tuple[Gremium, bool | Unset]]:

@@ -28,6 +28,7 @@ from pazufa_scraper_be.pipelines.build_vorgang.utils import (
     check_and_create_vote_outcome_station,
     get_station_typ_and_gremium,
     get_station_zeitpunkte,
+    get_vorgang_schlagworte,
 )
 from pazufa_scraper_be.pipelines.stats_counter import VorgangCounter
 
@@ -126,10 +127,15 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
             msg = f"[{vorgang.id}]: Could not create any Stations."
             raise DropItem(msg)
 
+        vorgang_schlagworte = get_vorgang_schlagworte(vorgang)
         stationen: list[Station] = []
         for dok_container in dok_containers:
             station_typ, (gremium, gremium_federf) = get_station_typ_and_gremium(dok_container)
             zp_start, zp_modifiziert = get_station_zeitpunkte(dok_container)
+
+            # merge vorgang schlagworte with schlagworte of this stations' documents schlagworte (deduplicated)
+            station_doks_schlagworte = {schlagwort for dok in dok_container.pazufa for schlagwort in dok.schlagworte or [] if schlagwort}
+            schlagworte = (vorgang_schlagworte or []) + (list(station_doks_schlagworte) or []) or UNSET
 
             station = Station(
                 zp_start=zp_start,
@@ -139,10 +145,10 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
                 dokumente=cast("list[Dokument | str]", dok_container.pazufa),
                 titel=dok_container.pardok.typ_l or UNSET,
                 gremium_federf=gremium_federf,
+                schlagworte=schlagworte,
                 # NOTE: Following should be revisited
                 link=UNSET,
                 trojanergefahr=UNSET,
-                schlagworte=UNSET,
                 additional_links=UNSET,
                 stellungnahmen=UNSET,
             )
