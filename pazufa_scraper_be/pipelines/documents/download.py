@@ -9,7 +9,6 @@ from scrapy.exceptions import DropItem
 from scrapy.http import Response
 from scrapy.http.request import NO_CALLBACK
 
-from pazufa_scraper_be.constants import DOKUMENT_FILE_NAME, DOWNLOAD_TIME_FILE_NAME, FILE_BYTE_HASH_FILE_NAME, LAST_MODIFIED_FILE_NAME, URL_FILE_NAME
 from pazufa_scraper_be.pardok import GesetzVorgang
 from pazufa_scraper_be.pipelines._base import CacheDirPipeline, StatsPipeline
 from pazufa_scraper_be.pipelines.stats_counter import DokumentCounter
@@ -36,17 +35,7 @@ class DownloadAndCacheDocuments(CacheDirPipeline, StatsPipeline):
                 continue
 
             for dokument_url in dokument.all_urls:
-                dokument_cache_dir = self.get_dokument_cache_dir(dokument=dokument, url=dokument_url)
-                if dokument_cache_dir is None:
-                    msg = f"[{vorgang.id} - {dokument.id}]: Did not get cache dir for additional URL: {dokument_url}"
-                    logger.warning(msg)
-                    continue
-
-                dokument_file = dokument_cache_dir / DOKUMENT_FILE_NAME
-                dokument_url_file = dokument_cache_dir / URL_FILE_NAME
-                dokument_download_time_file = dokument_cache_dir / DOWNLOAD_TIME_FILE_NAME
-                dokument_last_modified_file = dokument_cache_dir / LAST_MODIFIED_FILE_NAME
-                dokument_file_byte_hash_file = dokument_cache_dir / FILE_BYTE_HASH_FILE_NAME
+                document_cache = self.get_document_cache(document=dokument, document_url=dokument_url)
 
                 # TODO(anyone): https://codeberg.org/PaZuFa/pazufa-scraper-be/issues/30
                 if dokument_file.exists():
@@ -74,14 +63,14 @@ class DownloadAndCacheDocuments(CacheDirPipeline, StatsPipeline):
                     last_modified_as_iso = (
                         datetime.strptime(last_modified_header_as_byte.decode("utf-8"), "%a, %d %b %Y %H:%M:%S %Z").replace(tzinfo=UTC).isoformat()
                     )
-                    dokument_last_modified_file.write_text(last_modified_as_iso)
+                    document_cache.last_modified_file.write_text(last_modified_as_iso)
 
                 dokument_file_byte_hash = hashlib.sha256(response.body).hexdigest()
-                dokument_file_byte_hash_file.write_text(dokument_file_byte_hash)
+                document_cache.file_byte_hash_file.write_text(dokument_file_byte_hash)
 
                 self.increment_stats(DokumentCounter.DOWNLOAD_DONE)
-                dokument_url_file.write_text(response.url)
-                dokument_download_time_file.write_text(download_time.isoformat())
-                dokument_file.write_bytes(response.body)
+                document_cache.url_file.write_text(response.url)
+                document_cache.download_time_file.write_text(download_time.isoformat())
+                document_cache.document_file.write_bytes(response.body)
 
         return vorgang
