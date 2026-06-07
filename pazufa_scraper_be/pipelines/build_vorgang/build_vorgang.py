@@ -13,7 +13,13 @@ from scrapy.exceptions import DropItem
 from pazufa_scraper_be.pardok import APrDokument, DokTyp, DrsDokument, GesetzVorgang, GVBlDokument, PlPrDokument
 from pazufa_scraper_be.pipelines._base import CacheDirPipeline, StatsPipeline
 from pazufa_scraper_be.pipelines.build_vorgang import build_pazufa_dokument
-from pazufa_scraper_be.pipelines.build_vorgang.rules import BackwardMergeRule, DropRule, ForwardMergeRule, apply_rules
+from pazufa_scraper_be.pipelines.build_vorgang.rules import (
+    BackwardMergeRule,
+    DropRule,
+    ForwardMergeRule,
+    TransformRule,
+    apply_rules,
+)
 from pazufa_scraper_be.pipelines.build_vorgang.utils import (
     DokumentContainer,
     check_and_create_vote_outcome_station,
@@ -27,6 +33,62 @@ logger = logging.getLogger(__name__)
 
 class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
     """Pipeline that converts a GesetzVorgang into a PaZuFa Vorgang API model."""
+
+    def _get_drop_rules(self: Self) -> list[DropRule]:
+        return [
+            DropRule(
+                name="Drop if Vorgang only has Gesetz- und Verordnungsblatt",
+                when=lambda current: isinstance(current.pardok, GVBlDokument) and len(current.pardok.vorgang.dokumente) == 1,
+                log=lambda: self.increment_stats(VorgangCounter.IRRELEVANT),
+            ),
+            DropRule(
+                name="Drop postponed Lesung",
+                when=lambda current: (
+                    isinstance(current.pardok, PlPrDokument)
+                    and current.pardok.typ == "Behandlung im Plenum"
+                    and current.pardok.abstract is not None
+                    and bool(re.search(r"\bVertagt\b", current.pardok.abstract))
+                ),
+            ),
+        ]
+
+    def _get_transform_rules(self: Self) -> list[TransformRule]:
+        return []
+
+    def _get_forward_merge_rules(self: Self) -> list[ForwardMergeRule]:
+        return [
+            ForwardMergeRule(
+                name="Merge Änderungsantrag onto next Lesung",
+                when=lambda current: isinstance(current.pardok, DrsDokument) and current.pardok.typ == DokTyp.AendAntr,
+                merge_into=lambda _, target: (
+                    isinstance(target.pardok, PlPrDokument) and target.pardok.typ in (DokTyp.Lesung_I, DokTyp.Lesung_II, DokTyp.Lesung_III)
+                ),
+            ),
+        ]
+
+    def _get_backward_merge_rules(self: Self) -> list[BackwardMergeRule]:
+        return [
+            BackwardMergeRule(
+                name="Merge Lesungen split into multiple onto first of its kind",
+                when=lambda current: isinstance(current.pardok, PlPrDokument) and current.pardok.typ in (DokTyp.Lesung_I, DokTyp.Lesung_II, DokTyp.Lesung_III),
+                merge_into=lambda current, target: isinstance(target.pardok, PlPrDokument) and current.pardok.typ == target.pardok.typ,
+            ),
+            BackwardMergeRule(
+                name="Merge Beschlussempfehlung onto prev. Ausschussberatung of the same Ausschuss",
+                when=lambda current: isinstance(current.pardok, DrsDokument) and current.pardok.typ == DokTyp.BeschlEmpf,
+                merge_into=lambda current, target: isinstance(target.pardok, APrDokument) and current.pazufa[0].autoren == target.pazufa[0].autoren,
+            ),
+            BackwardMergeRule(
+                name="Merge all Gesetz- und Verordnungsblatt onto first one",
+                when=lambda current: isinstance(current.pardok, GVBlDokument),
+                merge_into=lambda _, target: isinstance(target.pardok, GVBlDokument),
+            ),
+            BackwardMergeRule(
+                name="Merge Gesetzentwurf Ergänzung onto initial Gesetzentwurf",
+                when=lambda current: isinstance(current.pardok, DrsDokument) and current.pardok.typ == DokTyp.VorlBeschl_GesEntwErg,
+                merge_into=lambda _, target: isinstance(target.pardok, DrsDokument) and target.pardok.typ == DokTyp.VorlBeschl_GesEntw,
+            ),
+        ]
 
     # TODO(se-jaeger): refactor to reduce complexity
     async def process_item(self: Self, vorgang: GesetzVorgang) -> PaZuFaVorgang:  # noqa: C901
@@ -55,51 +117,10 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
             msg = f"[{vorgang.id}]: Could not create any Dokument from Vorgang."
             raise DropItem(msg)
 
-        rules = [
-            DropRule(
-                name="Drop if Vorgang only has Gesetz- und Verordnungsblatt",
-                when=lambda current: isinstance(current.pardok, GVBlDokument) and len(current.pardok.vorgang.dokumente) == 1,
-                log=lambda: self.increment_stats(VorgangCounter.IRRELEVANT),
-            ),
-            DropRule(
-                name="Drop postponed Lesung",
-                when=lambda current: (
-                    isinstance(current.pardok, PlPrDokument)
-                    and current.pardok.typ == "Behandlung im Plenum"
-                    and current.pardok.abstract is not None
-                    and bool(re.search(r"\bVertagt\b", current.pardok.abstract))
-                ),
-            ),
-            ForwardMergeRule(
-                name="Merge Änderungsantrag onto next Lesung",
-                when=lambda current: isinstance(current.pardok, DrsDokument) and current.pardok.typ == DokTyp.AendAntr,
-                merge_into=lambda _, target: (
-                    isinstance(target.pardok, PlPrDokument) and target.pardok.typ in (DokTyp.Lesung_I, DokTyp.Lesung_II, DokTyp.Lesung_III)
-                ),
-            ),
-            BackwardMergeRule(
-                name="Merge Lesungen split into multiple onto first of its kind",
-                when=lambda current: isinstance(current.pardok, PlPrDokument) and current.pardok.typ in (DokTyp.Lesung_I, DokTyp.Lesung_II, DokTyp.Lesung_III),
-                merge_into=lambda current, target: isinstance(target.pardok, PlPrDokument) and current.pardok.typ == target.pardok.typ,
-            ),
-            BackwardMergeRule(
-                name="Merge Beschlussempfehlung onto prev. Ausschussberatung of the same Ausschuss",
-                when=lambda current: isinstance(current.pardok, DrsDokument) and current.pardok.typ == DokTyp.BeschlEmpf,
-                merge_into=lambda current, target: isinstance(target.pardok, APrDokument) and current.pazufa[0].autoren == target.pazufa[0].autoren,
-            ),
-            BackwardMergeRule(
-                name="Merge all Gesetz- und Verordnungsblatt onto first one",
-                when=lambda current: isinstance(current.pardok, GVBlDokument),
-                merge_into=lambda _, target: isinstance(target.pardok, GVBlDokument),
-            ),
-            BackwardMergeRule(
-                name="Merge Gesetzentwurf Ergänzung onto initial Gesetzentwurf",
-                when=lambda current: isinstance(current.pardok, DrsDokument) and current.pardok.typ == DokTyp.VorlBeschl_GesEntwErg,
-                merge_into=lambda _, target: isinstance(target.pardok, DrsDokument) and target.pardok.typ == DokTyp.VorlBeschl_GesEntw,
-            ),
-        ]
-
-        dok_containers = apply_rules(pardok_pazufa_doks=dok_containers, rules=rules)
+        dok_containers = apply_rules(pardok_pazufa_doks=dok_containers, rules=self._get_drop_rules())
+        dok_containers = apply_rules(pardok_pazufa_doks=dok_containers, rules=self._get_transform_rules())
+        dok_containers = apply_rules(pardok_pazufa_doks=dok_containers, rules=self._get_forward_merge_rules())
+        dok_containers = apply_rules(pardok_pazufa_doks=dok_containers, rules=self._get_backward_merge_rules())
 
         if len(dok_containers) == 0:
             self.increment_stats(VorgangCounter.DROP_NO_STATIONS)
