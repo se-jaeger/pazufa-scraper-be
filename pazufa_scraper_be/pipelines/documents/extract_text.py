@@ -1,8 +1,10 @@
 import logging
+from pathlib import Path
 from typing import Self
 
 import kreuzberg
 import magic
+from kreuzberg import OcrConfig
 from scrapy.exceptions import DropItem
 
 from pazufa_scraper_be.pardok import GesetzVorgang
@@ -10,6 +12,32 @@ from pazufa_scraper_be.pipelines._base import CacheDirPipeline, StatsPipeline
 from pazufa_scraper_be.pipelines.stats_counter import TextCounter
 
 logger = logging.getLogger(__name__)
+
+
+async def _extract_text(document_file: Path) -> str:
+    kreuzberg_config = kreuzberg.ExtractionConfig(enable_quality_processing=True, pages=kreuzberg.PageConfig(extract_pages=True), use_cache=False)
+
+    pdf = await kreuzberg.extract_file(
+        document_file,
+        config=kreuzberg_config,
+    )
+    text = "\n".join([page.get("content", "") for page in pdf.pages or []])
+
+    # In the few cases, where we could not extract text, apply OCR
+    if len(text) == 0:
+        kreuzberg_config.force_ocr = True
+        kreuzberg_config.ocr = OcrConfig(
+            backend="tesseract",
+            language="deu",
+        )
+
+        pdf = await kreuzberg.extract_file(
+            document_file,
+            config=kreuzberg_config,
+        )
+        text = pdf.content
+
+    return text
 
 
 class ExtractTextFromPDF(CacheDirPipeline, StatsPipeline):
@@ -31,11 +59,8 @@ class ExtractTextFromPDF(CacheDirPipeline, StatsPipeline):
                         continue
 
                     self.increment_stats(TextCounter.CACHE_MISS)
-                    pdf = await kreuzberg.extract_file(
-                        document_cache.document_file,
-                        config=kreuzberg.ExtractionConfig(enable_quality_processing=True, pages=kreuzberg.PageConfig(extract_pages=True), use_cache=False),
-                    )
-                    text = "\n".join([page.get("content", "") for page in pdf.pages or []])
+
+                    text = await _extract_text(document_cache.document_file)
 
                     # fmt: off
                     # Some postprocessing that was necessary after eyeballing documents
@@ -48,7 +73,6 @@ class ExtractTextFromPDF(CacheDirPipeline, StatsPipeline):
                     # fmt: on
 
                     if len(text) == 0:
-                        # TODO(se-jaeger): Use OCR as fallback
                         self.increment_stats(TextCounter.EXTRACT_FAILED_EMPTY_TEXT)
                         msg = f"[{vorgang.id} - {dokument.id}]: No text extracted."
                         logger.warning(msg)
