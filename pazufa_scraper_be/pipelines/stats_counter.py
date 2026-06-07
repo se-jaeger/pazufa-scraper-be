@@ -25,6 +25,7 @@ class VorgangCounter(StatsCounter):
 
     SUBMIT_ATTEMPT = _VORGANG_SUBMIT + "/attempt"
     SUBMIT_ACCEPTED = _VORGANG_SUBMIT + "/accepted"
+    SUBMIT_TRANSIENT_ERROR = _VORGANG_SUBMIT + "/transient_error"
     SUBMIT_REJECTED = _VORGANG_REJECTED
 
     @staticmethod
