@@ -5,40 +5,7 @@ from pydantic import ValidationError
 
 from pazufa_scraper_be.pardok.dokument import PlPrDokument
 from pazufa_scraper_be.pardok.vorgang import GesetzVorgang, Nebeneintrag
-
-
-@pytest.fixture
-def base_vorgang_data() -> dict[str, Any]:
-    """Return base fixture data for a GesetzVorgang."""
-    return {
-        "VTyp": "Gesetz",
-        "VTypL": "Gesetz-Typ",
-        "VID": "vorg123",
-        "ReihNr": 0,
-        "VNr": "V123/2024",
-        "VIR": "IR123",
-        "VSys": ["Sys1"],
-        "VSysL": ["System 1"],
-    }
-
-
-@pytest.fixture
-def base_dok_data() -> dict[str, Any]:
-    """Return base fixture data for a document."""
-    return {
-        "DokArt": "PlPr",
-        "DokArtL": "Plenumsprotokoll",
-        "DHerk": "Pardok",
-        "DHerkL": "Pardok-System",
-        "DokTyp": "Behandlung im Plenum",
-        "DokTypL": "Behandlung im Plenum Typ",
-        "DBID": "doc123",
-        "Wp": 19,
-        "ReihNr": 1,
-        "DokNr": "123/2024",
-        "DokDat": "10.05.2024",
-        "LokURL": "https://example.com/doc123",
-    }
+from tests.unit.pazufa_scraper_be.helpers import build_gesetz_vorgang_data
 
 
 def test_nebeneintrag_success() -> None:
@@ -62,18 +29,19 @@ def test_gesetzvorgang_success(base_vorgang_data: dict[str, Any], base_dok_data:
     invalid_dok["DBID"] = "bad-doc"
     invalid_dok["ReihNr"] = 0  # Invalid: must be > 0
 
-    data = {
-        **base_vorgang_data,
-        "Dokument": [base_dok_data, invalid_dok],
-        "Nebeneintrag": [
+    data = build_gesetz_vorgang_data(
+        base_vorgang_data=base_vorgang_data,
+        dok_datas=[base_dok_data, invalid_dok],
+        neben_eintrag_data=[
             {"ReihNr": 1, "Desk": "Desk 1"},
             {"ReihNr": 2, "Desk": "Desk 2"},
             {"ReihNr": -1, "Desk": "Desk oops"},  # bad: to be filtered out
         ],
-    }
-    n_nebeneintraege = len(data["Nebeneintrag"]) - 1
+    )
 
     vorgang = GesetzVorgang.model_validate(data)
+
+    n_nebeneintraege = len(data["Nebeneintrag"]) - 1
 
     assert vorgang.id == "vorg123"
     assert len(vorgang.dokumente) == 1
