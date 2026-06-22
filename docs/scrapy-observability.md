@@ -39,7 +39,8 @@ Counters are grouped by the data entity they track. Each section notes the respo
 **Hierarchy:**
 
 ```text
-PaZuFa/Vorgang                     ← total valid items
+PaZuFa/Vorgang/
+├── total                          ← total valid items
 ├── drop/
 │   ├── incorrect                  ← parse failure
 │   ├── no_documents               ← build failure
@@ -102,12 +103,16 @@ One count per document URL processed.
 ```text
 PaZuFa/
 ├── Summary/
+│   ├── ignore                               ← ignore summary for this Dokument
 │   └── cache/
 │       ├── hit                              ← served from cache
 │       └── miss                             ← cache cold, LLM call needed
 └── LLM/
+    └── extract_relevant_section/
+    │   ├── total                            ← total attempts to extract relevant section using LLM
+    │   ├── done                             ← success
+    │   └── failed                           ← failed
     └── summarize/
-        ├── extract_relevant_section         ← Protokoll preprocessing step
         ├── {art_l}                          ← dispatch by document type (dynamic)
         ├── done                             ← success
         └── failed/

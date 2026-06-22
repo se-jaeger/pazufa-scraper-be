@@ -39,6 +39,7 @@ API_TOKEN = os.environ.get("PAZUFA_API_TOKEN")
 
 LLM_TOKEN = os.environ.get("PAZUFA_LLM_TOKEN")
 LLM_MODEL = os.environ.get("PAZUFA_LLM_MODEL", "openrouter/openai/gpt-5-nano")
+LLM_TIMEOUT = os.environ.get("PAZUFA_LLM_TIMEOUT", None) or 5 * 60
 
 MATTERMOST_URL = os.environ.get("PAZUFA_MATTERMOST_URL", "https://chat.pazufa.de/hooks")
 MATTERMOST_TOKEN = os.environ.get("PAZUFA_MATTERMOST_TOKEN")

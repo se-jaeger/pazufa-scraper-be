@@ -77,17 +77,23 @@ class SummaryCounter(StatsCounter):
 
     CACHE_HIT = _SUMMARY_CACHE + "/hit"
     CACHE_MISS = _SUMMARY_CACHE + "/miss"
+    IGNORE = _SUMMARY + "/ignore"
 
 
 _LLM = PAZUFA + "/LLM"
 _LLM_SUMMARIZE = _LLM + "/summarize"
 _LLM_SUMMARIZE_FAILED = _LLM_SUMMARIZE + "/failed"
+_LLM_EXTRACT_RELEVANT_SECTION = _LLM + "/extract_relevant_section"
 
 
 class LLMCounter(StatsCounter):
     """Counters for LLM summarization operations."""
 
-    SUMMARIZE_EXTRACT_RELEVANT_SECTION = _LLM_SUMMARIZE + "/extract_relevant_section"
+    EXTRACT_RELEVANT_SECTION_TOTAL = _LLM_EXTRACT_RELEVANT_SECTION + "/total"
+    EXTRACT_RELEVANT_SECTION_DONE = _LLM_EXTRACT_RELEVANT_SECTION + "/done"
+    EXTRACT_RELEVANT_SECTION_FAILED = _LLM_EXTRACT_RELEVANT_SECTION + "/failed"
+
+    SUMMARIZE_TOTAL = _LLM_SUMMARIZE + "/total"
     SUMMARIZE_DONE = _LLM_SUMMARIZE + "/done"
 
     SUMMARIZE_FAILED_PROVIDER = _LLM_SUMMARIZE_FAILED + "/provider"

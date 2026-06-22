@@ -133,7 +133,12 @@ class LLMPipeline(BasePipeline):
 
             logging.getLogger("pazufa_corelib.llm.llm_connector").setLevel(logging.FATAL)
 
-            self.llm_connector = LLMConnector(model=self.llm_model_name, api_key=self._llm_token)
+            llm_timeout = self.crawler.settings.getint("LLM_TIMEOUT")
+            if not isinstance(llm_timeout, int) or llm_timeout <= 0:
+                msg = "Invalid LLM_TIMEOUT setting, must but integer greater than 0."
+                raise ValueError(msg)
+
+            self.llm_connector = LLMConnector(model=self.llm_model_name, api_key=self._llm_token, timeout_seconds=llm_timeout)
 
         else:
             msg = "LLM_TOKEN is not set. Skipping Document summarization."
