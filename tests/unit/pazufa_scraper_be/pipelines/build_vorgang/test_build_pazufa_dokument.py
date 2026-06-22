@@ -118,7 +118,7 @@ def test_get_typ_fallback(base_dok_data: dict[str, Any], base_vorgang_data: dict
 
 
 @pytest.mark.parametrize(
-    ("fixture_name", "dokument_class", "expexted_drucksnr"),
+    ("fixture_name", "dokument_class", "expected_drucksnr"),
     [
         ("drs_data", DrsDokument, "123/2024"),
         ("plpr_data", PlPrDokument, "123/2024"),
@@ -127,7 +127,7 @@ def test_get_typ_fallback(base_dok_data: dict[str, Any], base_vorgang_data: dict
         ("base_dok_data", BaseGesetzDokument, ""),
     ],
 )
-def test_get_drucksnr(request: pytest.FixtureRequest, fixture_name: str, dokument_class: type[BaseGesetzDokument], expexted_drucksnr: str) -> None:
+def test_get_drucksnr(request: pytest.FixtureRequest, fixture_name: str, dokument_class: type[BaseGesetzDokument], expected_drucksnr: str) -> None:
     """Verify Durchsachennummer assignment."""
     data = request.getfixturevalue(fixture_name)
     dokument = dokument_class.model_validate(data)
@@ -135,7 +135,7 @@ def test_get_drucksnr(request: pytest.FixtureRequest, fixture_name: str, dokumen
     dokument_cache_dir = Path("something/fake/42")
 
     drucksnr = _get_drucksnr(dokument, dokument_cache_dir)
-    assert drucksnr == expexted_drucksnr
+    assert drucksnr == expected_drucksnr
 
 
 def test_get_drucksnr_cache_dir_is_none(apr_data: dict[str, Any]) -> None:

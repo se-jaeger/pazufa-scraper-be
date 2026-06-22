@@ -3,9 +3,10 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
-from pazufa_corelib.api_client.models import Doktyp, Gremium, Parlament, Stationstyp
+from pazufa_corelib.api_client.models import Doktyp, Gremium, Parlament, Station, Stationstyp
 from pazufa_corelib.api_client.models import Dokument as PaZuFaDokument
 from pazufa_corelib.api_client.types import UNSET, Unset
 
@@ -85,3 +86,33 @@ def get_station_zeitpunkte(dok_container: DokumentContainer) -> tuple[datetime, 
         zp_start = dok_container.pardok.vk_dat
 
     return zp_start, zp_modifiziert
+
+
+def check_and_create_vote_outcome_station(station: Station, dok_abstract: str) -> Station | None:
+    """Check if station is Lesung and contains information about vote outcome. If so, create and return new station."""
+    if station.typ == Stationstyp.PARL_VOLLVLSGN:
+        angenommen = "Angenommen"
+        zustimmung = "Zustimmung"
+        abgelehnt = "Abgelehnt"
+        zurueckgezogen = "Zurückgezogen"
+
+        typ = None
+        if bool(re.search(rf"\b{angenommen}\b|\b{zustimmung}\b", dok_abstract)):
+            typ = Stationstyp.PARL_AKZEPTANZ
+            titel = angenommen
+
+        elif bool(re.search(rf"\b{abgelehnt}\b", dok_abstract)):
+            typ = Stationstyp.PARL_ABLEHNUNG
+            titel = abgelehnt
+
+        elif bool(re.search(rf"\b{zurueckgezogen}\b", dok_abstract)):
+            typ = Stationstyp.PARL_ZURUECKGZ
+            titel = zurueckgezogen
+
+        if typ:
+            new_station = Station.from_dict(station.to_dict() | {"typ": typ, "titel": titel})
+            new_station.zp_start = station.zp_start + timedelta(hours=1)
+
+            return new_station
+
+    return None
