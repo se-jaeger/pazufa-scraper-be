@@ -25,17 +25,13 @@ from pazufa_scraper_be.pipelines import (
     SummarizeExtractedPDFText,
 )
 
-# Custom Settings
+# Arguments
 LOG_LEVEL = "INFO"
 
-SCRAPER_UUID = uuid.UUID("05dc56fc-24e1-442b-9f97-91d596d50471")
 WAHLPERIODE = 19
 
-CACHE_DIR = Path(".cache")
-ERRORS_DIR = Path(".errors")
-
-API_URL = os.environ.get("PAZUFA_API_URL", "http://localhost:8080")
 API_TOKEN = os.environ.get("PAZUFA_API_TOKEN")
+API_URL = os.environ.get("PAZUFA_API_URL", "http://localhost:8080")
 
 LLM_TOKEN = os.environ.get("PAZUFA_LLM_TOKEN")
 LLM_MODEL = os.environ.get("PAZUFA_LLM_MODEL", "openrouter/openai/gpt-5-nano")
@@ -43,6 +39,11 @@ LLM_TIMEOUT = os.environ.get("PAZUFA_LLM_TIMEOUT", None) or 5 * 60
 
 MATTERMOST_URL = os.environ.get("PAZUFA_MATTERMOST_URL", "https://chat.pazufa.de/hooks")
 MATTERMOST_TOKEN = os.environ.get("PAZUFA_MATTERMOST_TOKEN")
+
+# Custom Settings
+SCRAPER_UUID = uuid.UUID("05dc56fc-24e1-442b-9f97-91d596d50471")
+CACHE_DIR = Path(".cache")
+ERRORS_DIR = Path(".errors")
 
 # Scrapy Settings
 BOT_NAME = "PaZuFa_Berlin_Scraper"
@@ -88,7 +89,7 @@ EXTENSIONS = {
 # Enable and configure HTTP caching (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html#httpcache-middleware-settings
 HTTPCACHE_ENABLED = True
-HTTPCACHE_EXPIRATION_SECS = 7 * 60 * 60 * 24
+HTTPCACHE_EXPIRATION_SECS = 60 * 60 * 24
 HTTPCACHE_DIR = "httpcache"
 HTTPCACHE_IGNORE_HTTP_CODES = []
 HTTPCACHE_STORAGE = "scrapy.extensions.httpcache.FilesystemCacheStorage"

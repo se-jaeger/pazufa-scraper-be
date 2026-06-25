@@ -1,4 +1,34 @@
+<div align="center">
+
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+&nbsp;&nbsp;
+[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)
+[![Scrapy](https://img.shields.io/badge/Scrapy-2.16+-green.svg)](https://scrapy.org/)
+[![Pydantic v2](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/pydantic/pydantic/main/docs/badge/v2.json)](https://pydantic.dev)
+&nbsp;&nbsp;
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![ty](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ty/main/assets/badge/v0.json)](https://github.com/astral-sh/ty)
+[![prek](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/j178/prek/master/docs/assets/badge-v0.json)](https://github.com/j178/prek)
+&nbsp;&nbsp;
+[![CI: Quality Control](https://ci.codeberg.org/api/badges/16670/status.svg?workflow=quality-control)](https://ci.codeberg.org/repos/16670)
+[![CI: Build Docker](https://ci.codeberg.org/api/badges/16670/status.svg?workflow=build-and-publish-image)](https://ci.codeberg.org/repos/16670)
+
+</div>
+
+---
+
 # `pazufa-scraper-be` — Abgeordnetenhaus von Berlin
+
+A scraper for the [Abgeordnetenhaus von Berlin](https://www.abgeordnetenhaus-berlin.de/) parliament, part of the
+[Parlamentszusammenfasser](https://codeberg.org/PaZuFa/parlamentszusammenfasser) (PaZuFa) platform
+([pazufa.de](https://pazufa.de)).
+
+Built with [Scrapy](https://scrapy.org/) (crawling & item pipelines), [pydantic](https://docs.pydantic.dev/) (data validation),
+[kreuzberg](https://codeberg.org/PaZuFa/kreuzberg) (PDF extraction), and
+[pazufa-corelib](https://codeberg.org/PaZuFa/pazufa-scraper-core) (pazufa backend api client & LLM summaries).
+
+---
 
 ## Setup
 
@@ -13,13 +43,32 @@ uv install
 ```bash
 # run a spider for current 'wahlperiode'
 scrapy runspider pazufa_scraper_be/spiders/gesetz_vorgang.py
+```
 
-# run a spider for specific 'wahlperiode'
-scrapy runspider -s WAHLPERIODE=18 pazufa_scraper_be/spiders/gesetz_vorgang.py
+Using `-s`, you can change scrapy settings.
+Check out [the settings.py file](./pazufa_scraper_be/settings.py) for more details.
+You might be interested in the following:
+
+| Setting | Default | Description |
+| -- | -- | -- |
+| `LOG_LEVEL` | `INFO` | Set log level for std out. |
+| `WAHLPERIODE` | `19` | Set which wahlperiode to scrape. |
+
+There are a some settings, which activate certain features.
+
+| Setting | Env Var | Default | Description |
+| -- | -- | -- | -- |
+| `API_TOKEN` | `PAZUFA_API_TOKEN` | `None` | Activates submission to PaZuFa API. Used for authentication and is handed out by backend developer/hoster. |
+| `API_URL` | `PAZUFA_API_URL` | `http://localhost:8080` | Required if `API_TOKEN` is set. Used to point to a certain backend/API (local, staging, prod). |
+| `LLM_TOKEN` | `PAZUFA_LLM_TOKEN` | `None` | Activates generation of summaries using LLM. |
+| `LLM_MODEL` | `PAZUFA_LLM_MODEL` | `openrouter/openai/gpt-5-nano` | Required if `LLM_TOKEN` is set. Choose which model to use from [openrouter.ai](https://openrouter.ai/models?input_modalities=text). |
+| `LLM_TIMEOUT` | `PAZUFA_LLM_TIMEOUT` | `300` | Required if `LLM_TOKEN` is set. Timeout for LLM API calls in seconds. |
+| `MATTERMOST_TOKEN` | `PAZUFA_MATTERMOST_TOKEN` | `None` | Activates notifications to Mattermost. |
+| `MATTERMOST_URL` | `PAZUFA_MATTERMOST_URL` | `https://chat.pazufa.de/hooks` | Required if `MATTERMOST_TOKEN` is set. Mattermost webhook URL. |
 
 ## Development
 
-### Code hygene
+### Code Hygiene
 
 If you want to make use of git hooks run
 
@@ -57,6 +106,8 @@ tests
 ├── integration
 └── unit
     └── pazufa_scraper_be
+        ├── conftest.py & helpers.py
+        └── {module/}test_{module}.py
 ```
 
 To run unit tests use
