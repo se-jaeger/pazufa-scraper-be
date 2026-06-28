@@ -1,7 +1,7 @@
 # Based on: https://github.com/astral-sh/uv-docker-example/blob/main/standalone.Dockerfile
 
 ## Builder image
-FROM ghcr.io/astral-sh/uv:bookworm-slim AS builder
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim@sha256:e5b65587bce7de595f299855d7385fe7fca39b8a74baa261ba1b7147afa78e58 AS builder
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 
 # Omit development dependencies
@@ -15,9 +15,9 @@ ENV UV_PYTHON_PREFERENCE=only-managed
 RUN uv python install 3.12
 
 WORKDIR /scraper
+# Copy instead of mount to allow rootless run, e.g. with podman
+COPY pyproject.toml uv.lock /scraper/
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --locked --no-install-project
 COPY . /scraper
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -25,7 +25,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 #######################################################################################
 ## Final PaZuFa Scraper Image
-FROM debian:trixie-slim
+FROM debian:trixie-slim@sha256:b6e2a152f22a40ff69d92cb397223c906017e1391a73c952b588e51af8883bf8
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
@@ -48,5 +48,4 @@ ENV PATH="/scraper/.venv/bin:$PATH"
 USER nonroot
 
 WORKDIR /scraper
-VOLUME ["/scraper/.cache", "/scraper/.errors"]
 ENTRYPOINT ["scrapy"]

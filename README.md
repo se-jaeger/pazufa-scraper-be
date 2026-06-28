@@ -66,6 +66,8 @@ There are a some settings, which activate certain features.
 | `MATTERMOST_TOKEN` | `PAZUFA_MATTERMOST_TOKEN` | `None` | Activates notifications to Mattermost. |
 | `MATTERMOST_URL` | `PAZUFA_MATTERMOST_URL` | `https://chat.pazufa.de/hooks` | Required if `MATTERMOST_TOKEN` is set. Mattermost webhook URL. |
 
+For usage via docker see [docker/](./docker/) and [docs](./docker/README.md).
+
 ## Development
 
 ### Code Hygiene
