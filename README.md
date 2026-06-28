@@ -13,6 +13,9 @@
 &nbsp;&nbsp;
 [![CI: Quality Control](https://ci.codeberg.org/api/badges/16670/status.svg?workflow=quality-control)](https://ci.codeberg.org/repos/16670)
 [![CI: Build Docker](https://ci.codeberg.org/api/badges/16670/status.svg?workflow=build-and-publish-image)](https://ci.codeberg.org/repos/16670)
+&nbsp;&nbsp;
+[![Docker Image Latest](https://img.shields.io/docker/v/sejaeger/pazufa-scraper-be?label=Docker-latest)](https://hub.docker.com/r/sejaeger/pazufa-scraper-be/tags)
+[![Docker Image Latest Tag](https://img.shields.io/docker/v/sejaeger/pazufa-scraper-be?sort=semver&label=Docker)](https://hub.docker.com/r/sejaeger/pazufa-scraper-be/tags)
 
 </div>
 
