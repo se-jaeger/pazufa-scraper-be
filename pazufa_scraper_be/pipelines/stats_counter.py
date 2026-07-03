@@ -33,6 +33,7 @@ class VorgangCounter(StatsCounter):
 
 
 _DOK = PAZUFA + "/Dokument"
+_DOK_URL = _DOK + "/url"
 _DOK_CACHE = _DOK + "/cache"
 _DOK_DOWNLOAD = _DOK + "/download"
 _DOK_DOWNLOAD_FAILED = _DOK_DOWNLOAD + "/failed"
@@ -40,6 +41,10 @@ _DOK_DOWNLOAD_FAILED = _DOK_DOWNLOAD + "/failed"
 
 class DokumentCounter(StatsCounter):
     """Counters for document download and cache operations."""
+
+    MISSING_PRIMARY = _DOK_URL + "/missing_primary"
+    RECOVERED_FROM_ADDITIONAL = _DOK_URL + "/recovered_primary_from_additional"
+    ADDITIONAL_PRUNED = _DOK_URL + "/pruned_addtional"
 
     CACHE_HIT = _DOK_CACHE + "/hit"
     CACHE_MISS = _DOK_CACHE + "/miss"

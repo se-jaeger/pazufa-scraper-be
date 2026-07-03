@@ -14,12 +14,10 @@ import uuid
 from pathlib import Path
 
 from pazufa_scraper_be.pipelines import (
-    AddAdditionalUrls,
     BuildPaZuFaVorgang,
     DownloadAndCacheDocuments,
     ExtractTextFromPDF,
-    FixMissingDokUrl,
-    RemoveBrokenUrl,
+    FixAndAddUrls,
     ReportAndDropErrors,
     SubmitVorgang,
     SummarizeExtractedPDFText,
@@ -72,9 +70,7 @@ ITEM_PIPELINES = {
     # NOTE: Pipelines with <100 get proper items or dicts, which contain data an error.
     ReportAndDropErrors: 99,
     # NOTE: Pipelines with >= 100 only get properly parsed items.
-    RemoveBrokenUrl: 100,
-    FixMissingDokUrl: 101,
-    AddAdditionalUrls: 102,
+    FixAndAddUrls: 100,
     DownloadAndCacheDocuments: 110,
     ExtractTextFromPDF: 120,
     SummarizeExtractedPDFText: 130,

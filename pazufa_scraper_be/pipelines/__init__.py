@@ -1,22 +1,18 @@
 from .build_vorgang.build_vorgang import BuildPaZuFaVorgang
 from .documents import (
-    AddAdditionalUrls,
     DownloadAndCacheDocuments,
     ExtractTextFromPDF,
-    FixMissingDokUrl,
-    RemoveBrokenUrl,
+    FixAndAddUrls,
     SummarizeExtractedPDFText,
 )
 from .errors import ReportAndDropErrors
 from .submit import SubmitVorgang
 
 __all__ = [
-    "AddAdditionalUrls",
     "BuildPaZuFaVorgang",
     "DownloadAndCacheDocuments",
     "ExtractTextFromPDF",
-    "FixMissingDokUrl",
-    "RemoveBrokenUrl",
+    "FixAndAddUrls",
     "ReportAndDropErrors",
     "SubmitVorgang",
     "SummarizeExtractedPDFText",
