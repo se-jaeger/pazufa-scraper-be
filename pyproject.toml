@@ -1,6 +1,6 @@
 [project]
 name = "pazufa-scraper-be"
-version = "0.0.2"
+version = "0.0.3"
 description = "A scraper that extracts data about the Abgeordnetenhaus von Berlin and supplies it to the PaZuFa."
 readme = "README.md"
 requires-python = ">=3.12"
