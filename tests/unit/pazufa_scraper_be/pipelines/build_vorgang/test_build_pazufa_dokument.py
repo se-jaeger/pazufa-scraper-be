@@ -21,12 +21,12 @@ from pazufa_scraper_be.pardok import DokTyp
 from pazufa_scraper_be.pardok.dokument import (
     AnyGesetzDokument,
     APrDokument,
-    AusschussprotokollTyp,
     BaseGesetzDokument,
     DokArt,
     DrsDokument,
     GVBlDokument,
     PlPrDokument,
+    ProtokollTyp,
 )
 from pazufa_scraper_be.pardok.vorgang import GesetzVorgang
 from pazufa_scraper_be.pipelines.build_vorgang._build_pazufa_dokument import (
@@ -170,9 +170,9 @@ def test_get_titel_returns_titel_string(
 @pytest.mark.parametrize(
     ("cache_dir_suffix", "expected_titel"),
     [
-        (f"-{AusschussprotokollTyp.Beschluss}", "Ausschuss Beschlussprotokoll - 123/2024"),
-        (f"-{AusschussprotokollTyp.Inhalt}", "Ausschuss Inhaltsprotokoll - 123/2024"),
-        (f"-{AusschussprotokollTyp.Wort}", "Ausschuss Wortprotokoll - 123/2024"),
+        (f"-{ProtokollTyp.Beschluss}", "Ausschuss Beschlussprotokoll - 123/2024"),
+        (f"-{ProtokollTyp.Inhalt}", "Ausschuss Inhaltsprotokoll - 123/2024"),
+        (f"-{ProtokollTyp.Wort}", "Ausschuss Wortprotokoll - 123/2024"),
     ],
 )
 def test_get_titel_apr(apr_data: dict[str, Any], cache_dir_suffix: str, expected_titel: str) -> None:

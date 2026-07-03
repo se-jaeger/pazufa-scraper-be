@@ -24,8 +24,8 @@ class DokArt(StrEnum):
     Drs = "Drs"
 
 
-class AusschussprotokollTyp(StrEnum):
-    """URL abbreviation codes for the three variants of Ausschussprotokoll documents."""
+class ProtokollTyp(StrEnum):
+    """URL abbreviation codes for the three variants of Protokoll documents."""
 
     Beschluss = "bp"
     Inhalt = "ip"
@@ -81,7 +81,7 @@ class BaseGesetzDokument(BaseModel):
     dat: GermanDate = Field(alias="DokDat")
     abstract: str | None = Field(default=None, alias="Abstract")
 
-    lok_url: HttpUrl = Field(alias="LokURL")
+    lok_url: HttpUrl | None = Field(default=None, alias="LokURL")
     additional_urls: Annotated[list[HttpUrl] | None, BeforeValidator(lambda v: None if v == [] else [v] if isinstance(v, str) else v)] = Field(default=None)
 
     def set_vorgang(self, vorgang: GesetzVorgang) -> None:

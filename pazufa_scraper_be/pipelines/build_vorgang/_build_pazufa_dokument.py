@@ -16,7 +16,7 @@ from pazufa_scraper_be.constants import (
     TEXT_FILE_NAME,
 )
 from pazufa_scraper_be.pardok import APrDokument, BaseGesetzDokument, DokTyp, DrsDokument, GVBlDokument, PlPrDokument
-from pazufa_scraper_be.pardok.dokument import AnyGesetzDokument, AusschussprotokollTyp, DokArt
+from pazufa_scraper_be.pardok.dokument import AnyGesetzDokument, DokArt, ProtokollTyp
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -75,10 +75,10 @@ def _get_drucksnr(dokument: BaseGesetzDokument, dokument_cache_dir: Path | None)
     return ""
 
 
-_APR_SUFFIX_LABELS: dict[AusschussprotokollTyp, str] = {
-    AusschussprotokollTyp.Beschluss: "Ausschuss Beschlussprotokoll",
-    AusschussprotokollTyp.Inhalt: "Ausschuss Inhaltsprotokoll",
-    AusschussprotokollTyp.Wort: "Ausschuss Wortprotokoll",
+_APR_SUFFIX_LABELS: dict[ProtokollTyp, str] = {
+    ProtokollTyp.Beschluss: "Ausschuss Beschlussprotokoll",
+    ProtokollTyp.Inhalt: "Ausschuss Inhaltsprotokoll",
+    ProtokollTyp.Wort: "Ausschuss Wortprotokoll",
 }
 
 _DRS_TYP_LABELS: dict[DokTyp, str] = {

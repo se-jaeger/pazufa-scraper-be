@@ -10,7 +10,7 @@ from scrapy.http.request import NO_CALLBACK
 
 from pazufa_scraper_be.constants import DOK_BASE_URL
 from pazufa_scraper_be.pardok import AnyGesetzDokument
-from pazufa_scraper_be.pardok.dokument import AusschussprotokollTyp
+from pazufa_scraper_be.pardok.dokument import ProtokollTyp
 
 
 def build_plenarprotokoll_url(wahlperiode: int, dokument_nr: str) -> HttpUrl | None:
@@ -24,14 +24,12 @@ def build_plenarprotokoll_url(wahlperiode: int, dokument_nr: str) -> HttpUrl | N
         return None
 
     nr = int(parts[1])
-    # TODO(se-jaeger): is the suffix 'bp' from AusschussprotokollTyp.Beschluss really the one we want to use here or a bug?
-    # (The suffix was kept from before the refactor, so a persisting aspect)
-    url = f"{DOK_BASE_URL}/{wahlperiode}/PlenarPr/p{wahlperiode}-{nr:03d}-{AusschussprotokollTyp.Beschluss}.pdf"
+    url = f"{DOK_BASE_URL}/{wahlperiode}/PlenarPr/p{wahlperiode}-{nr:03d}-{ProtokollTyp.Wort}.pdf"
 
     return HttpUrl(url)
 
 
-def build_ausschussprotokoll_variant_url(url: HttpUrl, typ: AusschussprotokollTyp) -> HttpUrl:
+def build_ausschussprotokoll_variant_url(url: HttpUrl, typ: ProtokollTyp) -> HttpUrl:
     """Return the URL for a specific APr variant by swapping the trailing-typ segment.
 
     Robust to non-3-digit numbering (ParlKBB19-001) and arbitrary abbrpaths;
@@ -65,10 +63,10 @@ class UrlResolution:
         return not self.primary_was_reachable and self.recovered_from is None
 
 
-async def url_is_reachable(engine: ExecutionEngine, url: HttpUrl) -> bool:
+async def url_is_reachable(engine: ExecutionEngine, url: HttpUrl | None) -> bool:
     """HEAD-check a URL; treats non-OK or exceptions as unreachable."""
-    request = Request(str(url), method="HEAD", callback=NO_CALLBACK)
     try:
+        request = Request(str(url), method="HEAD", callback=NO_CALLBACK)
         response = await engine.download_async(request)
 
     except Exception:  # noqa: BLE001

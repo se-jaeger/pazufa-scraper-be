@@ -4,7 +4,7 @@ from typing import Self
 from scrapy.exceptions import DropItem
 
 from pazufa_scraper_be.pardok import AnyGesetzDokument, APrDokument, GesetzVorgang, PlPrDokument
-from pazufa_scraper_be.pardok.dokument import AusschussprotokollTyp
+from pazufa_scraper_be.pardok.dokument import ProtokollTyp
 from pazufa_scraper_be.pardok.url import build_ausschussprotokoll_variant_url, build_plenarprotokoll_url, resolve_document_urls
 from pazufa_scraper_be.pipelines._base import StatsPipeline
 from pazufa_scraper_be.pipelines.stats_counter import DokumentCounter
@@ -25,14 +25,13 @@ class FixAndAddUrls(StatsPipeline):
         # Ausschussprotokolle can have up to three documents: Beschlussprotokoll, Inhaltsprotokoll and Wortprotokoll.
         # The last two are optional but the pardok XML does not always serve the first one.
         # So we order here to our liking.
-        if not isinstance(dokument, APrDokument):
+        if not isinstance(dokument, APrDokument) or dokument.lok_url is None:
             return
 
-        dokument.additional_urls = []
         additional_urls = []
-        for typ in AusschussprotokollTyp:
+        for typ in ProtokollTyp:
             url = build_ausschussprotokoll_variant_url(dokument.lok_url, typ)
-            if typ is AusschussprotokollTyp.Beschluss:
+            if typ is ProtokollTyp.Beschluss:
                 dokument.lok_url = url
 
             else:

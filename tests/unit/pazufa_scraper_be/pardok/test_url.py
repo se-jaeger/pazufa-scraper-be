@@ -7,7 +7,7 @@ import pytest
 from pydantic import HttpUrl
 from scrapy import Request
 
-from pazufa_scraper_be.pardok.dokument import APrDokument, AusschussprotokollTyp
+from pazufa_scraper_be.pardok.dokument import APrDokument, ProtokollTyp
 from pazufa_scraper_be.pardok.url import (
     build_ausschussprotokoll_variant_url,
     build_plenarprotokoll_url,
@@ -56,9 +56,9 @@ def _make_apr(apr_data: dict[str, Any], lok_url: str, additional_urls: list[str]
 @pytest.mark.parametrize(
     ("wahlperiode", "dokument_nr", "expected"),
     [
-        (19, "19/2", f"{_DOK_BASE}/19/PlenarPr/p19-002-bp.pdf"),
-        (18, "18/10", f"{_DOK_BASE}/18/PlenarPr/p18-010-bp.pdf"),
-        (19, "19/42", f"{_DOK_BASE}/19/PlenarPr/p19-042-bp.pdf"),
+        (19, "19/2", f"{_DOK_BASE}/19/PlenarPr/p19-002-wp.pdf"),
+        (18, "18/10", f"{_DOK_BASE}/18/PlenarPr/p18-010-wp.pdf"),
+        (19, "19/42", f"{_DOK_BASE}/19/PlenarPr/p19-042-wp.pdf"),
     ],
 )
 def test_build_plenarprotokoll_url_success(wahlperiode: int, dokument_nr: str, expected: str) -> None:
@@ -82,22 +82,22 @@ def test_build_plenarprotokoll_url_invalid_returns_none(dokument_nr: str) -> Non
     [
         (
             f"{_DOK_BASE}/19/AusschussPr/as/as19-020-wp.pdf",
-            AusschussprotokollTyp.Beschluss,
+            ProtokollTyp.Beschluss,
             f"{_DOK_BASE}/19/AusschussPr/as/as19-020-bp.pdf",
         ),
         (
             f"{_DOK_BASE}/19/AusschussPr/ParlKBB/ParlKBB19-001-bp.pdf",
-            AusschussprotokollTyp.Wort,
+            ProtokollTyp.Wort,
             f"{_DOK_BASE}/19/AusschussPr/ParlKBB/ParlKBB19-001-wp.pdf",
         ),
         (
             f"{_DOK_BASE}/19/AusschussPr/h/h19-003-wp.pdf",
-            AusschussprotokollTyp.Inhalt,
+            ProtokollTyp.Inhalt,
             f"{_DOK_BASE}/19/AusschussPr/h/h19-003-ip.pdf",
         ),
     ],
 )
-def test_build_ausschussprotokoll_variant_url(url: str, typ: AusschussprotokollTyp, expected: str) -> None:
+def test_build_ausschussprotokoll_variant_url(url: str, typ: ProtokollTyp, expected: str) -> None:
     """build_ausschussprotokoll_variant_url swaps only the trailing typ segment."""
     result = build_ausschussprotokoll_variant_url(HttpUrl(url), typ)
     assert str(result) == expected
@@ -114,7 +114,7 @@ def test_build_ausschussprotokoll_variant_url(url: str, typ: AusschussprotokollT
 def test_build_ausschussprotokoll_variant_url_rejects_malformed(url: str) -> None:
     """build_ausschussprotokoll_variant_url raises ValueError for URLs it cannot split."""
     with pytest.raises(ValueError, match="Cannot derive APr variant"):
-        build_ausschussprotokoll_variant_url(HttpUrl(url), AusschussprotokollTyp.Beschluss)
+        build_ausschussprotokoll_variant_url(HttpUrl(url), ProtokollTyp.Beschluss)
 
 
 # Protokoll order ---------------------------------------------------------------
@@ -122,8 +122,8 @@ def test_build_ausschussprotokoll_variant_url_rejects_malformed(url: str) -> Non
 
 def test_apr_variant_order() -> None:
     """apr_variant_order declares Beschluss as primary, followed by Inhalt and Wort."""
-    expected_list = [AusschussprotokollTyp.Beschluss, AusschussprotokollTyp.Inhalt, AusschussprotokollTyp.Wort]
-    for expected, protkoll_typ in zip(expected_list, AusschussprotokollTyp, strict=True):
+    expected_list = [ProtokollTyp.Beschluss, ProtokollTyp.Inhalt, ProtokollTyp.Wort]
+    for expected, protkoll_typ in zip(expected_list, ProtokollTyp, strict=True):
         assert expected == protkoll_typ
 
 
