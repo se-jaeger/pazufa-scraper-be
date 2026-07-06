@@ -215,7 +215,6 @@ def build_pazufa_dokument(dokument: AnyGesetzDokument, dokument_cache_dir: Path 
     file_byte_hash_file = dokument_cache_dir / FILE_BYTE_HASH_FILE_NAME
 
     text_file_missing = _check_text_file(dokument, text_file)
-
     hash_file_missing = _check_hash_file(dokument, file_byte_hash_file)
 
     if text_file_missing or hash_file_missing:

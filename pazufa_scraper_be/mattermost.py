@@ -65,21 +65,24 @@ class MattermostNotifier:
 def _build_payload(scrapy_stats: StatsCollector, backend_host: str) -> dict:
     stats_dict = {k.removeprefix(f"{PAZUFA}/"): v for k, v in scrapy_stats.get_stats().items() if k.startswith(PAZUFA)}
 
-    number_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.TOTAL, 0))
+    number_total_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.TOTAL, 0))
+    number_irrelevant_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.IRRELEVANT, 0))
     number_submitted_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.SUBMIT_ATTEMPT, 0))
     number_accepted_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.SUBMIT_ACCEPTED, 0))
     rejected_codes_counts = {
         int(key.split("/")[-1]): int(count) for key, count in scrapy_stats.get_stats().items() if key.startswith(VorgangCounter.SUBMIT_REJECTED)
     }
+    number_rejected_vorgaenge = sum(rejected_codes_counts.values())
 
     rejected_lines = [f"\t├ {code}: `{count}`" for code, count in list(rejected_codes_counts.items())[:-1]]
     rejected_lines += [f"\t└ {code}: `{count}`" for code, count in list(rejected_codes_counts.items())[-1:]]
 
     description_lines = [
-        f"📋 Found `{number_vorgaenge}` Vorgänge",
-        f"📤 Tried to submit `{number_submitted_vorgaenge}` to the backend",
+        f"📋 `{number_total_vorgaenge}` Vorgänge found",
+        f"🚫 `{number_irrelevant_vorgaenge}` Vorgänge are out of scope",
+        f"📤 `{number_submitted_vorgaenge}` submitted to the backend",
         f"├ ✅ `{number_accepted_vorgaenge}` accepted",
-        f"└ ❌ `{sum(rejected_codes_counts.values())}` rejected with status codes",
+        f"└ ❌ `{number_rejected_vorgaenge}` rejected with status codes",
         *rejected_lines,
         "\n ",  # Nicer formatting in Mattermost
     ]

@@ -29,12 +29,15 @@ class Rule:
 class DropRule(Rule):
     """Rule that drops matching DokumentContainers from the pipeline."""
 
+    log: Callable[[], None] = lambda: None
+
 
 @dataclass
 class TransformRule(Rule):
     """Rule that transforms a matching DokumentContainer."""
 
     transform_function: Callable[[DokumentContainer], DokumentContainer]
+    log: Callable[[], None] = lambda: None
 
 
 def _merge_function(current: DokumentContainer, target: DokumentContainer) -> DokumentContainer:
@@ -48,6 +51,7 @@ def _merge_function(current: DokumentContainer, target: DokumentContainer) -> Do
 class _MergeRule(Rule):
     merge_into: Callable[[DokumentContainer, DokumentContainer], bool]
     merge_function: Callable[[DokumentContainer, DokumentContainer], DokumentContainer] = _merge_function
+    log: Callable[[], None] = lambda: None
 
 
 @dataclass
@@ -91,6 +95,7 @@ def apply_rules(pardok_pazufa_doks: list[DokumentContainer], rules: Sequence[Rul
                             if rule.merge_into(current, target):
                                 append_item = False
                                 pending.append((current, rule))
+                                rule.log()
                                 break
 
                     case BackwardMergeRule():
@@ -98,14 +103,17 @@ def apply_rules(pardok_pazufa_doks: list[DokumentContainer], rules: Sequence[Rul
                             if rule.merge_into(current, result[i]):
                                 append_item = False
                                 result[i] = rule.merge_function(current, result[i])
+                                rule.log()
                                 break
 
                     case TransformRule():
                         # NOTE: don't break because we (potentially) want to apply other rules
                         current = rule.transform_function(current)
+                        rule.log()
 
                     case DropRule():
                         append_item = False
+                        rule.log()
                         break
 
         if append_item:

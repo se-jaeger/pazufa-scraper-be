@@ -29,7 +29,7 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
     """Pipeline that converts a GesetzVorgang into a PaZuFa Vorgang API model."""
 
     # TODO(se-jaeger): refactor to reduce complexity
-    async def process_item(self: Self, vorgang: GesetzVorgang) -> PaZuFaVorgang:
+    async def process_item(self: Self, vorgang: GesetzVorgang) -> PaZuFaVorgang:  # noqa: C901
         """Build and return a PaZuFa Vorgang from a parsed GesetzVorgang."""
         if not isinstance(vorgang, GesetzVorgang):
             msg = f"Expected {GesetzVorgang.__name__} object but got {vorgang.__class__.__name__}."
@@ -37,11 +37,15 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
 
         dok_containers = []
         for pardok in vorgang.dokumente:
-            pazufa = [
-                d
-                for url in pardok.all_urls
-                if (d := build_pazufa_dokument(dokument=pardok, dokument_cache_dir=self.get_dokument_cache_dir(dokument=pardok, url=url), url=url))
-            ]
+            pazufa = []
+            # TODO(anyone): This silently drops Doks which do not have URLs but PaZuFa model requires them.
+            # TODO(anyone): This usually screws up the Station ordering and the Vorgang will get rejected
+            for url in pardok.all_urls:
+                dokument_cache_dir = self.get_dokument_cache_dir(dokument=pardok, url=url)
+                pazufa_dokument = build_pazufa_dokument(dokument=pardok, dokument_cache_dir=dokument_cache_dir, url=url)
+
+                if pazufa_dokument:
+                    pazufa.append(pazufa_dokument)
 
             if len(pazufa) > 0:
                 dok_containers.append(DokumentContainer(pardok, pazufa))
@@ -55,6 +59,7 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
             DropRule(
                 name="Drop if Vorgang only has Gesetz- und Verordnungsblatt",
                 when=lambda current: isinstance(current.pardok, GVBlDokument) and len(current.pardok.vorgang.dokumente) == 1,
+                log=lambda: self.increment_stats(VorgangCounter.IRRELEVANT),
             ),
             DropRule(
                 name="Drop postponed Lesung",
@@ -62,7 +67,7 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
                     isinstance(current.pardok, PlPrDokument)
                     and current.pardok.typ == "Behandlung im Plenum"
                     and current.pardok.abstract is not None
-                    and bool(re.search("vertagt", str(current.pardok.abstract), flags=re.IGNORECASE))
+                    and bool(re.search(r"\bVertagt\b", current.pardok.abstract))
                 ),
             ),
             ForwardMergeRule(
@@ -147,7 +152,7 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
             ids=[VgIdent(id=vorgang.id, typ="vorgnr")],
             links=[f"https://pardok.parlament-berlin.de/portala/vorgang/{vorgang.id}"],
             # NOTE: Following should be revisited
-            verfassungsaendernd=False,  # TODO(se-jaeger): not set at the moment?
+            verfassungsaendernd=False,
             kurztitel=UNSET,
             lobbyregister=UNSET,
         )

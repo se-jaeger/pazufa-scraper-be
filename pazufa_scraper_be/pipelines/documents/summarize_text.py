@@ -16,10 +16,6 @@ from pazufa_scraper_be.pipelines.stats_counter import LLMCounter, SummaryCounter
 logger = logging.getLogger(__name__)
 
 
-class LLMSummaryNotImplementedError(NotImplementedError):
-    """Summary for document not (yet) implemented."""
-
-
 class SummarizeExtractedPDFText(CacheDirPipeline, LLMPipeline, StatsPipeline):
     """Pipeline that summarizes extracted document text via an LLM."""
 
