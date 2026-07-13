@@ -40,11 +40,6 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
     def _get_drop_rules(self: Self) -> list[DropRule]:
         return [
             DropRule(
-                name="Drop if Vorgang only has Gesetz- und Verordnungsblatt",
-                when=lambda current: isinstance(current.pardok, GVBlDokument) and len(current.pardok.vorgang.dokumente) == 1,
-                log=lambda: self.increment_stats(VorgangCounter.IRRELEVANT),
-            ),
-            DropRule(
                 name="Drop Ausschussberatung '19/100' after Rejection for Vorgang 'V-435029'",
                 when=lambda current: isinstance(current.pardok, APrDokument) and current.pardok.nr == "19/100" and current.pardok.vorgang.id == "V-435029",
             ),
@@ -115,11 +110,14 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
             msg = f"Expected {GesetzVorgang.__name__} object but got {vorgang.__class__.__name__}."
             raise DropItem(msg)
 
+        if len(vorgang.dokumente) == 1 and isinstance(vorgang.dokumente[0], GVBlDokument):
+            self.increment_stats(VorgangCounter.DROP_OUT_OF_SCOPE)
+            msg = f"[{vorgang.id}]: Out of scope. Single Gesetz- und Verordnungsblatt."
+            raise DropItem(msg, log_level="INFO")
+
         dok_containers = []
         for pardok in vorgang.dokumente:
             pazufa = []
-            # TODO(anyone): This silently drops Doks which do not have URLs but PaZuFa model requires them.
-            # TODO(anyone): This usually screws up the Station ordering and the Vorgang will get rejected
             for url in pardok.all_urls:
                 dokument_cache_dir = self.get_dokument_cache_dir(dokument=pardok, url=url)
                 pazufa_dokument = build_pazufa_dokument(dokument=pardok, dokument_cache_dir=dokument_cache_dir, url=url)
