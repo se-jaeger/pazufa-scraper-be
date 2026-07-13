@@ -40,11 +40,6 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
     def _get_drop_rules(self: Self) -> list[DropRule]:
         return [
             DropRule(
-                name="Drop if Vorgang only has Gesetz- und Verordnungsblatt",
-                when=lambda current: isinstance(current.pardok, GVBlDokument) and len(current.pardok.vorgang.dokumente) == 1,
-                log=lambda: self.increment_stats(VorgangCounter.IRRELEVANT),
-            ),
-            DropRule(
                 name="Drop Ausschussberatung '19/100' after Rejection for Vorgang 'V-435029'",
                 when=lambda current: isinstance(current.pardok, APrDokument) and current.pardok.nr == "19/100" and current.pardok.vorgang.id == "V-435029",
             ),
@@ -113,6 +108,11 @@ class BuildPaZuFaVorgang(CacheDirPipeline, StatsPipeline):
         """Build and return a PaZuFa Vorgang from a parsed GesetzVorgang."""
         if not isinstance(vorgang, GesetzVorgang):
             msg = f"Expected {GesetzVorgang.__name__} object but got {vorgang.__class__.__name__}."
+            raise DropItem(msg)
+
+        if len(vorgang.dokumente) == 1 and isinstance(vorgang.dokumente[0], GVBlDokument):
+            self.increment_stats(VorgangCounter.DROP_OUT_OF_SCOPE)
+            msg = f"[{vorgang.id}]: Out of scope. Single Gesetz- und Verordnungsblatt."
             raise DropItem(msg)
 
         dok_containers = []
