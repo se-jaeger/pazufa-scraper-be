@@ -17,9 +17,9 @@ class VorgangCounter(StatsCounter):
     """Counters tracking the lifecycle of a ``GesetzVorgang`` item."""
 
     TOTAL = _VORGANG + "/total"
-    IRRELEVANT = _VORGANG + "/irrelevant"
 
     DROP_INCORRECT = _VORGANG_DROP + "/incorrect"
+    DROP_OUT_OF_SCOPE = _VORGANG_DROP + "/out_of_scope"
     DROP_NO_DOCUMENTS = _VORGANG_DROP + "/no_documents"
     DROP_NO_STATIONS = _VORGANG_DROP + "/no_stations"
 

@@ -66,7 +66,7 @@ def _build_payload(scrapy_stats: StatsCollector, backend_host: str) -> dict:
     stats_dict = {k.removeprefix(f"{PAZUFA}/"): v for k, v in scrapy_stats.get_stats().items() if k.startswith(PAZUFA)}
 
     number_total_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.TOTAL, 0))
-    number_irrelevant_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.IRRELEVANT, 0))
+    number_out_of_scope_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.DROP_OUT_OF_SCOPE, 0))
     number_submitted_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.SUBMIT_ATTEMPT, 0))
     number_transient_error_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.SUBMIT_TRANSIENT_ERROR, 0))
     number_accepted_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.SUBMIT_ACCEPTED, 0))
@@ -80,7 +80,7 @@ def _build_payload(scrapy_stats: StatsCollector, backend_host: str) -> dict:
 
     description_lines = [
         f"📋 `{number_total_vorgaenge}` Vorgänge found",
-        f"🚫 `{number_irrelevant_vorgaenge}` Vorgänge are out of scope",
+        f"🚫 `{number_out_of_scope_vorgaenge}` Vorgänge are out of scope",
         f"📤 `{number_submitted_vorgaenge}` submitted to the backend",
         f"├ ✅ `{number_accepted_vorgaenge}` accepted",
         f"├ ⚠️ `{number_transient_error_vorgaenge}` have transient errors",
