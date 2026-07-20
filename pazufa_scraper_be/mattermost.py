@@ -68,7 +68,7 @@ def _build_payload(scrapy_stats: StatsCollector, backend_host: str) -> dict:
     number_total_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.TOTAL, 0))
     number_out_of_scope_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.DROP_OUT_OF_SCOPE, 0))
     number_submitted_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.SUBMIT_ATTEMPT, 0))
-    number_transient_error_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.SUBMIT_TRANSIENT_ERROR, 0))
+    number_transient_error_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.SUBMIT_ERROR, 0))
     number_accepted_vorgaenge = int(scrapy_stats.get_value(VorgangCounter.SUBMIT_ACCEPTED, 0))
     rejected_codes_counts = {
         int(key.split("/")[-1]): int(count) for key, count in scrapy_stats.get_stats().items() if key.startswith(VorgangCounter.SUBMIT_REJECTED)

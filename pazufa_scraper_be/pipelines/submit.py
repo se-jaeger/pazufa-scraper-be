@@ -7,7 +7,7 @@ from pazufa_corelib.api_client.api.vorgang import vorgang_put
 from pazufa_corelib.api_client.models.vorgang import Vorgang
 from scrapy.exceptions import DropItem
 
-from pazufa_scraper_be.constants import TRANSIENT_ERROR_THRESHOLD
+from pazufa_scraper_be.constants import SUBMISSION_ERROR_GRACE_PERIOD_DAYS
 from pazufa_scraper_be.pipelines._base import ApiPipeline, StatsPipeline
 from pazufa_scraper_be.pipelines.stats_counter import VorgangCounter
 
@@ -37,9 +37,10 @@ class SubmitVorgang(ApiPipeline, StatsPipeline):
 
                 msg = f"[{id_}]: Got {response.status_code} status code when submitting to PaZuFa API. {url_part}Response: {response.content.decode('utf-8')}"
 
-                days_since_last_update = (datetime.now(UTC).date() - vorgang.stationen[-1].zp_start.date()).days
-                if days_since_last_update < TRANSIENT_ERROR_THRESHOLD:
-                    self.increment_stats(VorgangCounter.SUBMIT_TRANSIENT_ERROR)
+                last_update = vorgang.stationen[-1].zp_start.date()
+                days_since_last_update = (datetime.now(UTC).date() - last_update).days
+                if days_since_last_update < SUBMISSION_ERROR_GRACE_PERIOD_DAYS:
+                    self.increment_stats(VorgangCounter.SUBMIT_ERROR)
                     logger.info(msg)
 
                 else:
